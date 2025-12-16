@@ -730,8 +730,7 @@ function initMaterialGrid() {
     grid.innerHTML = "";
     grid.style.display = ''; 
     
-    // ★★★ [關鍵修正] 不能清空所有 class，必須保留 panel-view ★★★
-    // 否則 switchPanel 函式會抓不到它，導致無法隱藏
+    // 確保 class 正確，以便 CSS 切換佈局
     grid.className = "panel-view"; 
 
     for (let key in MaterialDB) {
@@ -742,8 +741,21 @@ function initMaterialGrid() {
         
         const matName = TextDB[mat.nameId] || key;
         
-        btn.innerHTML = `<strong>${matName}</strong>`;
-        btn.title = `五行: ${mat.element}\n強度上限: ${mat.max}`; 
+        // ★ 取得對應屬性的顏色 (從 data.js 的 ElementColors 拿)
+        // 注意：hover 時背景會變金黃色，所以這裡文字顏色可能需要一點陰影或調整
+        // 但為了簡單，我們讓五行文字在 hover 後顯示為深色粗體即可
+        
+        // ★★★ 修改處：建構支援滑動特效的 HTML ★★★
+        btn.innerHTML = `
+            <div class="mat-name-label">${matName}</div>
+            <div class="mat-info-slide">
+                <div>五行：<strong>${mat.element}</strong></div>
+                <div>強度：<strong>${mat.max}</strong></div>
+            </div>
+        `;
+        
+        // 移除原本的 title 屬性，因為現在資訊已經直接顯示在 UI 上了，不需要瀏覽器的原生提示框來干擾
+        // btn.title = ... (已移除)
         
         btn.onclick = () => selectMaterial(key);
         grid.appendChild(btn);

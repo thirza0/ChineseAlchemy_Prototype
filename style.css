@@ -173,24 +173,40 @@ body {
     filter: grayscale(0.5);
 }
 
+/* =========================================
+   修正：材料按鈕 (Material Grid) - 滑鼠懸停特效版
+   ========================================= */
+
+/* 1. 修改 .mat-btn 容器設定 */
 .mat-btn {
     background-color: #2c2c35;
     border: 1px solid #555;
     color: #e0e0e0;
-    padding: 15px;
+    
+    /* ★ 改為 Flex 佈局，讓內容垂直置中 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    
+    /* ★ 設定固定高度，確保滑動空間一致 */
+    height: 100px; 
+    padding: 10px;
+    
     cursor: pointer;
     border-radius: 4px;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 彈性動態曲線 */
     text-align: center;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     position: relative;
+    overflow: hidden; /* ★ 關鍵：隱藏超出範圍的內容 */
 }
 
 .mat-btn:hover {
     background-color: #d4af37;
     color: #121212;
     border-color: #fff;
-    transform: translateY(-3px);
+    transform: translateY(-5px);
     box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
 }
 
@@ -201,6 +217,40 @@ body {
     box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
     opacity: 1 !important;
     z-index: 10;
+}
+
+/* 2. 新增：材料名稱 (預設置中) */
+.mat-name-label {
+    font-size: 1.1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    /* 預設位置 */
+    transform: translateY(0);
+}
+
+/* 3. 新增：滑出的資訊欄 (預設隱藏) */
+.mat-info-slide {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(20px); /* 初始位置稍微往下 */
+    transition: all 0.3s ease;
+    margin-top: 0;
+    color: #333; /* hover 後背景變亮，字體改深色 */
+}
+
+/* ★★★ 互動邏輯：Hover 時觸發 ★★★ */
+.mat-btn:hover .mat-name-label {
+    /* 名稱稍微往上移，並縮小一點點騰出空間 */
+    transform: translateY(-10px) scale(0.95);
+}
+
+.mat-btn:hover .mat-info-slide {
+    opacity: 1;
+    max-height: 50px; /* 給予足夠高度展開 */
+    transform: translateY(0); /* 回到原位 */
+    margin-top: 5px;
 }
 
 /* 流派選擇 */
