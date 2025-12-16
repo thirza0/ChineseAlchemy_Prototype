@@ -681,20 +681,29 @@ input[type=range] {
 
 /* 圖示共用底座 */
 .legend-icon {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 16px;
+    height: 16px;
+
+    border-radius: 50%;
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
+
+
+
+
 
 /* 1. 丹 (本次)：白底金邊 */
 .icon-dan {
-    width: 12px;
-    height: 12px;
-    background-color: #ffffff;
-    border: 2px solid #d4af37;
-    border-radius: 50%;
+  background-color: #ffffff;
+  border: 2px solid #d4af37;
+  border-radius: 50%;
 }
+
 
 /* 2. 舊 (上次)：灰底金邊 */
 .icon-old {
@@ -715,14 +724,28 @@ input[type=range] {
 
 /* 4. 虛線：金色虛線 (模擬 script.js 的 dashed line) */
 .line-dashed {
-    width: 20px;
-    height: 2px;
-    /* CSS 畫虛線的小技巧 */
-    background-image: linear-gradient(to right, #d4af37 50%, transparent 50%);
-    background-size: 6px 100%; /* 控制虛線間距 */
-    background-repeat: repeat-x;
-    margin-top: 6px;
+  width: 18px;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    #d4af37 0 4px,
+    transparent 4px 8px
+  );
 }
+.icon-dan::after {
+    content: "丹";
+    font-size: 0.6rem;
+    color: #d4af37;
+    font-weight: bold;
+}
+
+.icon-old::after {
+    content: "舊";
+    font-size: 0.6rem;
+    color: #7e7e7e;
+    font-weight: bold;
+}
+
 #process-text {
     font-size: 2rem;
     color: #fff;
