@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+
+
+<body>
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>15_煉丹模擬器 Web Prototype</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <div id="history-modal" class="hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>煉丹紀錄</h2>
+                <span class="close-btn" onclick="toggleHistoryModal()">×</span>
+            </div>
+            <div id="history-tabs" class="history-tabs">
+                <button onclick="switchHistoryTab('NEUTRAL')" class="history-tab-btn">🛡️ 中和流</button>
+                <button onclick="switchHistoryTab('EXTEND')" class="history-tab-btn">🚀 延伸流</button>
+                <button onclick="switchHistoryTab('BIAS')" class="history-tab-btn">☯️ 偏性流</button>
+            </div>
+
+            <div id="history-list-container">
+                <p style="text-align:center; color:#888;">暫無煉丹紀錄</p>
+            </div>
+
+            <div class="modal-footer">
+                <button class="clear-btn" onclick="clearHistoryWithConfirm()">清空所有紀錄</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div id="main-frame">
+            <div id="menu-container">
+                <div class="menu-item" onclick="toggleInventoryModal()">
+                    <div class="menu-icon">🎒</div>
+                    <div class="menu-label">背包</div>
+                </div>
+
+                <div class="menu-item" onclick="toggleHistoryModal()">
+                    <div class="menu-icon">📜</div>
+                    <div class="menu-label">紀錄</div>
+                </div>
+
+                <div class="menu-item" onclick="toggleEffectModal()">
+                    <div class="menu-icon">💊</div>
+                    <div class="menu-label">療效</div>
+                </div>
+            </div>
+
+            <div id="interactive-area">
+                <div id="status-bar">
+                    <div style="flex:1"></div>
+                    <div style="text-align:center">
+                        <h2 id="step-title">準備煉丹</h2>
+                        <p id="instruction-text">請選擇第一種主要材料。</p>
+                    </div>
+                    <div style="flex:1"></div>
+                </div>
+
+                <div id="content-panel">
+
+                    <div id="material-grid" class="panel-view">
+                    </div>
+
+                    <div id="weighing-panel" class="panel-view hidden">
+                        <div class="material-card">
+                            <h3 id="weigh-mat-name">材料名稱</h3>
+                            <p id="weigh-mat-desc">屬性描述...</p>
+                        </div>
+                        <div class="weight-controls">
+                            <div class="slider-container">
+                                <input type="range" id="weight-slider" min="0" max="1000" value="0">
+                            </div>
+                            <div class="manual-btns">
+                                <button onclick="adjustWeight(-1)">-1.0g</button>
+                                <button onclick="adjustWeight(-0.1)">-0.1g</button>
+                                <span id="weight-display">0.0 g</span>
+                                <button onclick="adjustWeight(0.1)">+0.1g</button>
+                                <button onclick="adjustWeight(1)">+1.0g</button>
+                            </div>
+                        </div>
+                        <button id="add-btn" class="action-btn" onclick="confirmAddMaterial()">加入丹爐</button>
+                        <button class="secondary-btn" onclick="cancelSelection()">返回重選</button>
+                    </div>
+
+                    <div id="ritual-panel" class="panel-view hidden">
+                        <div id="pot-status">
+                            <h3>丹爐內含：</h3>
+                            <ul id="pot-list"></ul>
+                        </div>
+
+                        <div id="grind-container" class="hidden">
+                            <p id="grind-hint">請按住按鈕進行研磨...</p>
+                            <div class="progress-bar-bg">
+                                <div id="grind-progress-fill"></div>
+                            </div>
+                        </div>
+
+                        <div id="fire-container" class="hidden">
+                            <p id="fire-hint">請快速點擊按鈕生火！</p>
+                            <div id="fire-progress-container">
+                            </div>
+                            <div id="fire-ratio-display">0.00%</div>
+                        </div>
+
+                        <div id="auxiliary-container" class="hidden">
+                            <p id="auxiliary-hint">請加入輔料以調和藥性</p>
+                            <div id="auxiliary-count">0/3</div>
+                        </div>
+
+                        <div id="wait-container" class="hidden">
+                            <h2 id="wait-timer" style="color:#40E0D0; font-size:2rem;">靜置中...</h2>
+                        </div>
+
+                        <div class="ritual-action">
+                            <button id="ritual-btn" class="action-btn">開始儀式</button>
+                        </div>
+                    </div>
+
+                    <div id="result-panel" class="panel-view hidden">
+                        <h2 id="process-text" class="hidden"></h2>
+
+                        <div id="final-result-container" class="result-layout hidden">
+                            <div class="result-left">
+                                <h1 id="final-name">丹藥名稱</h1>
+                                <div id="final-quality-badge">S</div>
+                            </div>
+
+                            <div class="result-right">
+                                <div class="info-row">
+                                    <span>五行屬性：</span><strong id="final-element">-</strong>
+                                </div>
+                                <div class="info-row">
+                                    <span>品質判定：</span><strong id="final-quality-text">-</strong>
+                                </div>
+                                <div class="info-row">
+                                    <span>配方偏差：</span><strong id="final-deviation">-</strong>
+                                </div>
+                                <div class="info-row">
+                                    <span>吻合度：</span><strong id="final-match" style="color:#d4af37">-</strong>
+                                </div>
+
+                                <div class="desc-box" id="final-desc">
+                                    描述...
+                                </div>
+
+                                <div class="coord-debug-box">
+                                    <p>玩家座標: <span id="p-coord" style="color:#0f0"></span></p>
+                                    <p>目標座標: <span id="t-coord" style="color:#ff0"></span></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="restart-btn" class="restart-btn hidden" onclick="resetGame()">重新煉製</button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="debug-area">
+                <div class="debug-section debug-log-section">
+                    <div class="debug-header">Debug Log / 系統訊息</div>
+                    <div id="console-output"></div>
+                </div>
+                <div class="debug-section debug-map-section">
+                    <div class="debug-section debug-map-section">
+                        <div class="debug-header">
+                            配方地圖 (Scale: 10x)
+                            <span id="zoom-indicator" style="float:right; font-size:0.8em; color:#d4af37;">100%</span>
+                        </div>
+                        <div id="map-container">
+                            <canvas id="recipe-map" width="320" height="320"></canvas>
+                            <div class="map-controls">
+                                <button class="map-ctrl-btn" onclick="mapZoomIn()">＋</button>
+                                <button class="map-ctrl-btn" onclick="mapResetView()">⟲</button>
+                                <button class="map-ctrl-btn" onclick="mapZoomOut()">－</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div id="inventory-modal" class="modal hidden">
+        <div class="modal-content inventory-content">
+            <div class="modal-header">
+                <h2>🎒 丹藥背包 (庫存)</h2>
+                <span class="close-btn" onclick="toggleInventoryModal()">×</span>
+            </div>
+
+            <div class="inventory-toolbar">
+                <button class="export-btn json" onclick="exportInventoryToJSON()">📥 匯出 JSON</button>
+                <button class="export-btn csv" onclick="exportInventoryToCSV()">📊 匯出 CSV (Excel)</button>
+            </div>
+
+            <div id="inventory-list-container" style="padding: 20px; overflow-y: auto; flex: 1;">
+                <p style="text-align:center; color:#888;">背包是空的</p>
+            </div>
+
+            <div class="modal-footer">
+                <button class="clear-btn destroy-all" onclick="clearInventoryWithConfirm()">🔥 銷毀所有丹藥 🔥</button>
+            </div>
+        </div>
+    </div>
+    <div id="effect-modal" class="modal hidden">
+        <div class="modal-content effect-content">
+            <div class="modal-header">
+                <h2>💊 配方療效一覽</h2>
+                <span class="close-btn" onclick="toggleEffectModal()">×</span>
+            </div>
+
+            <div id="effect-list-container" style="padding: 20px; overflow-y: auto; flex: 1;">
+            </div>
+
+            <div class="modal-footer">
+                <p style="color:#888; font-size:0.9rem; margin:0;">※ 僅列出已知配方</p>
+            </div>
+        </div>
+    </div>
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
