@@ -98,14 +98,38 @@ const TextDB = {
     62: "補氣/補腎",
     63: "養顏/回春",
     64: "止痛/遮斷",
-    // ★★★ 新增：煉丹須知 (ID: 65) ★★★
-    65: `1. 煉丹是為了「對症下藥」<br>
-         2. 請先去看診系統了解病患情況<br>
-         3. 若丹藥的五行剋制病患的五行，毒素將會加倍<br>
-         4. 若丹藥的五行為病患五行的相生，效果將會加倍<br>
-         5. 不同的「材料」與「比例」可以配出不同的配方<br>
-         6. 不同的材料有不同的毒素，每個病患對毒素的承受力都不同，請謹慎製藥<br>
-         7. (目前「火侯」、「輔料」、「靜置」都不會影響丹藥成品)`
+    // data.js - 修改 TextDB[65]
+
+    // ★★★ 修改：煉丹須知 (ID: 65) - 美化版 HTML 結構 ★★★
+    65: `
+    <div class="rule-container">
+        <ul class="rule-list">
+            <li>
+                <span class="rule-num">01</span>
+                <div class="rule-text">煉丹核心是<span class="highlight">「對症下藥」</span>，請務必先至看診系統確認病患五行與症狀。</div>
+            </li>
+            <li>
+                <span class="rule-num">02</span>
+                <div class="rule-text">相剋法則：若丹藥五行<span class="warn">剋制</span>病患，<span class="warn">毒素將加倍</span>。</div>
+            </li>
+            <li>
+                <span class="rule-num">03</span>
+                <div class="rule-text">相生法則：若丹藥五行<span class="good">生助</span>病患，<span class="good">療效將加倍</span>。</div>
+            </li>
+            <li>
+                <span class="rule-num">04</span>
+                <div class="rule-text">配方奧義：不同的<span class="highlight">「材料組合」</span>與<span class="highlight">「重量比例」</span>將解鎖不同古方。</div>
+            </li>
+            <li>
+                <span class="rule-num">05</span>
+                <div class="rule-text">每個病患對<span class="warn">毒素</span>承受力不同，請謹慎控制劑量與屬性。</div>
+            </li>
+        </ul>
+        <div class="rule-note">
+            ⚠️ 測試版註記：目前版本中，「火侯」、「輔料」、「靜置」暫不影響數值，僅作儀式感體驗。
+        </div>
+    </div>
+    `
 };
 // ★★★ 新增：症狀資料庫 (SymptomsDB) ★★★
 // 對應「症狀對應.csv」

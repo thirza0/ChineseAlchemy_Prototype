@@ -866,41 +866,98 @@ input[type=range] {
     align-items: center;
     backdrop-filter: blur(5px);
 }
-/* style.css 新增部分 */
+/* style.css - 修改與新增 */
 
 /* =========================================
-   ★ 新增：說明視窗樣式 (Instruction Modal)
+   ★ 修改：說明視窗樣式 (Instruction Modal) - 美化版
    ========================================= */
 
-/* 視窗特定樣式 (藍色系，區分於背包的綠色、紀錄的金色) */
 .instruction-content {
-    border: 2px solid #3498db !important;
-    box-shadow: 0 0 30px rgba(52, 152, 219, 0.3);
+    /* 改用深藍色系漸層背景，增加科技/修真感 */
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+    border: 1px solid #4ecca3 !important; /* 青綠色邊框 */
+    box-shadow: 0 0 30px rgba(78, 204, 163, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.5);
+    height: 550px !important; /* 稍微加高一點給美化排版空間 */
+    max-height: 85vh;
 }
 
-/* 內容文字排版優化 */
 #instruction-body {
-    background-color: #1a1a1a;
-    text-align: left;
-    white-space: pre-line; /* 確保換行符號被正確渲染，雖然我們用了 <br>，但這行是保險 */
+    background-color: transparent; /* 讓父層漸層透出來 */
+    padding: 10px 25px !important; /* 調整內距 */
 }
 
-/* 讓列表文字有點縮排，閱讀更舒適 */
-#instruction-body p {
-    margin-bottom: 10px;
+/* --- 新增：內部 HTML 結構樣式 --- */
+
+/* 列表容器 */
+.rule-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
-/* 通用內容框 (紀錄 & 背包) */
-.modal-content {
-    background-color: #1e1e24;
-    width: 650px;
-    max-width: 95vw;
-    height: 60vh;
-    /* 固定高度 */
-    border-radius: 10px;
+
+/* 單條規則卡片 */
+.rule-list li {
     display: flex;
-    flex-direction: column;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-    animation: fadeIn 0.3s;
+    align-items: flex-start;
+    background-color: rgba(255, 255, 255, 0.05); /* 半透明底 */
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #3d4a66; /* 預設深色邊條 */
+    transition: all 0.2s;
+}
+
+.rule-list li:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left-color: #4ecca3; /* hover 時變亮 */
+    transform: translateX(5px);
+}
+
+/* 序號樣式 */
+.rule-num {
+    font-family: 'Consolas', monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #4ecca3; /* 青色 */
+    margin-right: 15px;
+    opacity: 0.8;
+}
+
+/* 文字區域 */
+.rule-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #dcdde1;
+}
+
+/* 關鍵字高亮 */
+.highlight {
+    color: #d4af37; /* 金色 */
+    font-weight: bold;
+}
+
+/* 警告文字 (剋制/毒素) */
+.warn {
+    color: #ff6b6b; /* 紅色 */
+    font-weight: bold;
+}
+
+/* 正面文字 (生助/療效) */
+.good {
+    color: #4cd137; /* 綠色 */
+    font-weight: bold;
+}
+
+/* 底部註記區塊 */
+.rule-note {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px dashed #666;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #888;
+    text-align: center;
 }
 
 /* 背包專用樣式 */
