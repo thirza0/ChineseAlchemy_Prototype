@@ -174,7 +174,26 @@
                             <span id="zoom-indicator" style="float:right; font-size:0.8em; color:#d4af37;">100%</span>
                         </div>
                         <div id="map-container">
+                            <div class="map-legend-overlay">
+                                <div class="legend-item">
+                                    <span class="legend-icon icon-dan"></span>
+                                    <span class="legend-text">丹 (本次結果)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-icon icon-old"></span>
+                                    <span class="legend-text">舊 (上次結果)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-icon line-solid"></span>
+                                    <span class="legend-text">原點 ➜ 結果</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-icon line-dashed"></span>
+                                    <span class="legend-text">原點 ➜ 理想</span>
+                                </div>
+                            </div>
                             <canvas id="recipe-map" width="320" height="320"></canvas>
+
                             <div class="map-controls">
                                 <button class="map-ctrl-btn" onclick="mapZoomIn()">＋</button>
                                 <button class="map-ctrl-btn" onclick="mapResetView()">⟲</button>

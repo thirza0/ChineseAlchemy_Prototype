@@ -1237,7 +1237,7 @@ function calculateFinalResult() {
             reactionText = TextDB[bestRecipe.effectId] || "無特殊反應";
         }
     } else {
-        reactionText = "可能導致腹瀉、嘔吐或更糟的情況...";
+        reactionText = "你該不會想吃吃看吧？";
     }
 
     // --- 8. 毒素計算 ---
@@ -1254,9 +1254,9 @@ function calculateFinalResult() {
     let displayToxin = finalToxin.toFixed(2);
 
     // --- 9. 渣滓處理 ---
-    let finalName = isSlag ? "不明爐渣" : TextDB[bestRecipe.nameId];
+    let finalName = isSlag ? "渣滓" : TextDB[bestRecipe.nameId];
     let finalElement = isSlag ? "無" : bestRecipe.element;
-    let finalDesc = isSlag ? "一坨黑乎乎的東西，散發著焦味。" : TextDB[bestRecipe.descId];
+    let finalDesc = isSlag ? "一坨黑乎乎的東西，散發著難以言喻的味道。" : TextDB[bestRecipe.descId];
     let displayDeviation = isSlag ? "---" : bestDist.toFixed(2);
     let displayMatch = isSlag ? "---" : matchRatePct;
 
