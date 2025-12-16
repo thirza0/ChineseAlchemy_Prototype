@@ -866,13 +866,35 @@ input[type=range] {
     align-items: center;
     backdrop-filter: blur(5px);
 }
+/* style.css 新增部分 */
 
+/* =========================================
+   ★ 新增：說明視窗樣式 (Instruction Modal)
+   ========================================= */
+
+/* 視窗特定樣式 (藍色系，區分於背包的綠色、紀錄的金色) */
+.instruction-content {
+    border: 2px solid #3498db !important;
+    box-shadow: 0 0 30px rgba(52, 152, 219, 0.3);
+}
+
+/* 內容文字排版優化 */
+#instruction-body {
+    background-color: #1a1a1a;
+    text-align: left;
+    white-space: pre-line; /* 確保換行符號被正確渲染，雖然我們用了 <br>，但這行是保險 */
+}
+
+/* 讓列表文字有點縮排，閱讀更舒適 */
+#instruction-body p {
+    margin-bottom: 10px;
+}
 /* 通用內容框 (紀錄 & 背包) */
 .modal-content {
     background-color: #1e1e24;
     width: 650px;
     max-width: 95vw;
-    height: 80vh;
+    height: 60vh;
     /* 固定高度 */
     border-radius: 10px;
     display: flex;

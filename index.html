@@ -206,6 +206,23 @@
 
         </div>
     </div>
+    <div id="instruction-modal" class="modal hidden">
+        <div class="modal-content instruction-content">
+            <div class="modal-header">
+                <h2>煉丹須知</h2>
+                <span class="close-btn" onclick="closeInstructionModal()">×</span>
+            </div>
+
+            <div id="instruction-body"
+                style="padding: 20px; overflow-y: auto; flex: 1; font-size: 1.1rem; line-height: 1.8; color: #ddd;">
+            </div>
+
+            <div class="modal-footer">
+                <button class="action-btn" onclick="closeInstructionModal()"
+                    style="min-width: 120px; font-size: 1rem;">確認</button>
+            </div>
+        </div>
+    </div>
     <div id="inventory-modal" class="modal hidden">
         <div class="modal-content inventory-content">
             <div class="modal-header">

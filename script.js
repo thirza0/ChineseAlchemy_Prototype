@@ -77,6 +77,7 @@ const SLAG_DISTANCE_THRESHOLD = 1.5; // 爐渣門檻
 let inventoryStorage = [];
 
 // --- 2. 初始化與主要流程 ---
+// script.js - 修改 window.onload
 window.onload = function () {
     log("系統啟動中...");
     if (typeof MaterialDB === 'undefined' || typeof RecipeDB === 'undefined' || typeof TextDB === 'undefined') {
@@ -91,21 +92,51 @@ window.onload = function () {
     log("系統啟動完成 (v13.0 Inventory Added)");
 
     loadHistoryFromStorage();
-    loadInventoryFromStorage(); // ★★★ 新增：載入背包 ★★★
-    showGameModeSelection();
+    loadInventoryFromStorage();
+
+    // ★★★ 修改處：先顯示說明視窗，關閉後才選流派 ★★★
+    // 呼叫顯示說明視窗函式
+    showInstructionModal();
+
     setupMapInteractions();
     updateZoomUI();
 };
+// script.js - 新增函式
 
+// 顯示煉丹須知
+function showInstructionModal() {
+    const modal = document.getElementById('instruction-modal');
+    const bodyText = document.getElementById('instruction-body');
+
+    if (modal && bodyText) {
+        // 從 TextDB 讀取 ID 65 的內容
+        const content = TextDB[65] || "暫無說明內容";
+        bodyText.innerHTML = content;
+
+        modal.classList.remove('hidden');
+    }
+}
+
+// 關閉煉丹須知
+function closeInstructionModal() {
+    const modal = document.getElementById('instruction-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+
+        // ★ 邏輯串接：關閉說明後，自動開啟流派選擇 (原本是 onload 直接開，現在移到這裡)
+        // 這樣流程比較順：看說明 -> 選流派 -> 開始遊戲
+        showGameModeSelection();
+    }
+}
 window.toggleHistoryModal = function () {
     const modal = document.getElementById('history-modal');
     if (modal.classList.contains('hidden')) {
         modal.classList.remove('hidden');
-        
+
         // ★★★ [修正] 打開時，將頁籤切換到當前流派 (或上次停留的頁籤) ★★★
         // 這樣按鈕的 Active 樣式才會正確初始化
         if (!currentHistoryTab) currentHistoryTab = earthMode;
-        switchHistoryTab(currentHistoryTab); 
+        switchHistoryTab(currentHistoryTab);
     } else {
         modal.classList.add('hidden');
     }
@@ -140,7 +171,7 @@ window.deleteHistoryItem = function (index, event) {
         // 從當前選中的頁籤陣列中移除
         historyStorage[currentHistoryTab].splice(index, 1);
         localStorage.setItem('alchemy_history_storage', JSON.stringify(historyStorage));
-        
+
         // 如果剛好刪到最後一筆，要更新地圖顯示變數以免出錯
         if (historyStorage[earthMode].length === 0) {
             lastPlayerResult = null;
@@ -244,9 +275,9 @@ function setStep(step) {
     } else if (step === 1) {
         title.textContent = "步驟 1/2：秤重";
         prepareWeighingPanel();
-        
+
         // ★★★ 修改：切換至秤重面板 (因為 initMaterialGrid 修好了，這裡會自動隱藏材料列表) ★★★
-        switchPanel('weighing-panel'); 
+        switchPanel('weighing-panel');
 
     } else if (step === 2) {
         title.textContent = "步驟 2/2：選擇次要材料";
@@ -258,7 +289,7 @@ function setStep(step) {
     } else if (step === 3) {
         title.textContent = "步驟 2/2：秤重";
         prepareWeighingPanel();
-        
+
         // ★★★ 修改：切換至秤重面板 ★★★
         switchPanel('weighing-panel');
 
@@ -270,7 +301,7 @@ function setStep(step) {
         resetRitualStates();
         updateRitualBtn();
         switchPanel('ritual-panel');
-        
+
     } else if (step === 5) {
         title.textContent = "結算中";
         switchPanel('result-panel');
@@ -726,25 +757,25 @@ function drawTooltip(ctx, text, x, y, cw, ch) {
 function initMaterialGrid() {
     const grid = document.getElementById('material-grid');
     if (!grid) return;
-    
+
     grid.innerHTML = "";
-    grid.style.display = ''; 
-    
+    grid.style.display = '';
+
     // 確保 class 正確，以便 CSS 切換佈局
-    grid.className = "panel-view"; 
+    grid.className = "panel-view";
 
     for (let key in MaterialDB) {
         const mat = MaterialDB[key];
         const btn = document.createElement('div');
         btn.className = "mat-btn";
         btn.id = `mat-btn-${key}`;
-        
+
         const matName = TextDB[mat.nameId] || key;
-        
+
         // ★ 取得對應屬性的顏色 (從 data.js 的 ElementColors 拿)
         // 注意：hover 時背景會變金黃色，所以這裡文字顏色可能需要一點陰影或調整
         // 但為了簡單，我們讓五行文字在 hover 後顯示為深色粗體即可
-        
+
         // ★★★ 修改處：建構支援滑動特效的 HTML ★★★
         btn.innerHTML = `
             <div class="mat-name-label">${matName}</div>
@@ -753,10 +784,10 @@ function initMaterialGrid() {
                 <div>強度：<strong>${mat.max}</strong></div>
             </div>
         `;
-        
+
         // 移除原本的 title 屬性，因為現在資訊已經直接顯示在 UI 上了，不需要瀏覽器的原生提示框來干擾
         // btn.title = ... (已移除)
-        
+
         btn.onclick = () => selectMaterial(key);
         grid.appendChild(btn);
     }
@@ -979,7 +1010,7 @@ function setupGrindEvents(btn) {
         if (grindInterval) return;
         btn.classList.add('active-grind');
         grindInterval = setInterval(() => {
-            
+
             if (grindProgress < 100) {
                 grindProgress += 2;
                 if (grindProgress > 100) grindProgress = 100;
@@ -1122,23 +1153,23 @@ function calculateFinalResult() {
         previousResultData = lastResultData;
         previousPlayerResult = lastPlayerResult;
     }
-    
+
     isShowingPreviousResult = false;
     const toggleBtn = document.getElementById('toggle-result-btn');
-    if(toggleBtn) toggleBtn.textContent = "👀 查看上一次結果";
+    if (toggleBtn) toggleBtn.textContent = "👀 查看上一次結果";
 
     // --- 1. 物理運算與排序 ---
     let sortedMats = [...potMaterials].sort((a, b) => b.weight - a.weight);
-    let pMat1 = sortedMats[0]; 
+    let pMat1 = sortedMats[0];
     let pMat2 = sortedMats[1];
-    let dbMat1 = MaterialDB[pMat1.id]; 
+    let dbMat1 = MaterialDB[pMat1.id];
     let dbMat2 = MaterialDB[pMat2.id];
     let playerRes = calculateCoordinate(dbMat1, pMat1.weight, dbMat2, pMat2.weight, grindCoefficient);
-    
+
     let bestRecipe = null;
     let isSlag = false;
     let slagReason = "";
-    let errorType = "NONE"; 
+    let errorType = "NONE";
 
     // --- 2. 配方篩選 (門票檢查) ---
     let primaryCandidates = RecipeDB.filter(r => MaterialDB[r.targets[0]].element === dbMat1.element);
@@ -1149,12 +1180,12 @@ function calculateFinalResult() {
         let secondaryMatches = primaryCandidates.filter(r => MaterialDB[r.targets[1]].element === dbMat2.element);
         let targetPool = (secondaryMatches.length > 0) ? secondaryMatches : primaryCandidates;
         let success = (secondaryMatches.length > 0) ? 1 : 0;
-        
+
         if (success === 0) errorType = "ELEMENT";
 
         let bestRatioDiff = 999;
         let playerRatio1 = pMat1.weight / (pMat1.weight + pMat2.weight);
-        
+
         targetPool.forEach(r => {
             let rRatio1 = r.ratio[0] / (r.ratio[0] + r.ratio[1]);
             let diff = Math.abs(playerRatio1 - rRatio1);
@@ -1173,7 +1204,7 @@ function calculateFinalResult() {
                 errorType = "RATIO";
             }
         }
-        
+
         if (success === 0 && bestRecipe) {
             let dist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
             if (dist > SLAG_FALLBACK_DISTANCE) { isSlag = true; slagReason = "副材料不合且比例相差過大/"; bestRecipe = null; }
@@ -1184,8 +1215,8 @@ function calculateFinalResult() {
     if (!bestRecipe) {
         let minDist = 9999;
         RecipeDB.forEach(r => {
-             let d = Math.sqrt(Math.pow(playerRes.x - r.targetX, 2) + Math.pow(playerRes.y - r.targetY, 2));
-             if(d < minDist) { minDist = d; bestRecipe = r; }
+            let d = Math.sqrt(Math.pow(playerRes.x - r.targetX, 2) + Math.pow(playerRes.y - r.targetY, 2));
+            if (d < minDist) { minDist = d; bestRecipe = r; }
         });
         isSlag = true;
         if (!slagReason) slagReason = "未找到合適配方(例外情況)";
@@ -1193,11 +1224,11 @@ function calculateFinalResult() {
 
     // --- 5. 計算評級分數 ---
     let bestDist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
-    
+
     let pRatio = pMat1.weight / (pMat1.weight + pMat2.weight);
     let rTotal = bestRecipe.ratio[0] + bestRecipe.ratio[1];
-    let matchRate = 1 - Math.abs(pRatio - (bestRecipe.ratio[0]/rTotal));
-    
+    let matchRate = 1 - Math.abs(pRatio - (bestRecipe.ratio[0] / rTotal));
+
     let penalty = 1.0;
     if (bestRecipe) {
         let m1 = (pMat1.id === bestRecipe.targets[0]);
@@ -1210,12 +1241,12 @@ function calculateFinalResult() {
     // --- 6. 決定品質評級 ---
     let quality = "D";
     let qualityPool = CommentsDB.SLAG;
-    
-    if (isSlag) { 
-        quality = "D"; 
+
+    if (isSlag) {
+        quality = "D";
     } else {
-        if (errorType === "MATERIAL") { 
-            quality = "B"; qualityPool = CommentsDB.B; 
+        if (errorType === "MATERIAL") {
+            quality = "B"; qualityPool = CommentsDB.B;
         } else {
             let isPerfect = (matchRate >= 0.99) && (Math.abs(grindCoefficient - bestRecipe.grindTarget) < 0.01) && (bestDist < 0.01);
             if (isPerfect) { quality = "U"; qualityPool = CommentsDB.U; }
@@ -1228,7 +1259,7 @@ function calculateFinalResult() {
 
     let randomComment = qualityPool[Math.floor(Math.random() * qualityPool.length)];
     let finalComment = isSlag ? slagReason + " " + randomComment : randomComment;
-    
+
     let advice = "";
     if (errorType === "MATERIAL") advice = MasterAdviceDB.WRONG_MATERIAL;
     else if (errorType === "ELEMENT") advice = MasterAdviceDB.WRONG_ELEMENT;
@@ -1256,7 +1287,7 @@ function calculateFinalResult() {
     let toxinValX = 0, toxinValY = 0;
     let v1 = resolveDirection(dbMat1.element, dbMat2.element);
     let v2 = resolveDirection(dbMat2.element, dbMat1.element);
-    
+
     if (v1.x !== 0) toxinValX = dbMat1.toxin; else if (v2.x !== 0) toxinValX = dbMat2.toxin;
     if (v1.y !== 0) toxinValY = dbMat1.toxin; else if (v2.y !== 0) toxinValY = dbMat2.toxin;
 
@@ -1315,17 +1346,17 @@ function calculateFinalResult() {
 // 修改：結算畫面 UI 更新邏輯 (固定寬度版)
 function updateResultUI(data) {
     const container = document.getElementById('final-result-container');
-    
+
     // 1. 準備顏色
     // ▼ 修改這裡，把 "全": "#FFFFFF" 加進去
-    const elColorMap = { 
-        "金": "#C0C0C0", 
-        "木": "#4CAF50", 
-        "水": "#2196F3", 
-        "火": "#FF5252", 
+    const elColorMap = {
+        "金": "#C0C0C0",
+        "木": "#4CAF50",
+        "水": "#2196F3",
+        "火": "#FF5252",
         "土": "#FFC107",
         "全": "#b700ffff" // ✨ 新增
-    }; 
+    };
     const elColor = elColorMap[data.element] || "#FFF";
     // ...
 
@@ -1429,11 +1460,11 @@ function updateResultUI(data) {
 }
 
 // ★★★ 新增：專用的手風琴切換函式 (放在全域) ★★★
-window.toggleResAcc = function(btn) {
+window.toggleResAcc = function (btn) {
     // 找到下一個兄弟元素 (也就是 content div)
     const content = btn.nextElementSibling;
     const arrow = btn.querySelector('span:last-child');
-    
+
     if (content.style.display === 'none' || content.style.display === '') {
         content.style.display = 'block';
         arrow.textContent = '▼';
@@ -1617,7 +1648,7 @@ function renderHistory() {
 
     // ★★★ [關鍵修正] 讀取 currentHistoryTab (選中的頁籤)，而不是 earthMode (當前遊戲) ★★★
     const list = historyStorage[currentHistoryTab] || [];
-    
+
     if (list.length === 0) {
         // 顯示流派名稱，讓玩家知道現在看的是哪一個
         let modeName = currentHistoryTab === 'NEUTRAL' ? '中和流' : (currentHistoryTab === 'EXTEND' ? '延伸流' : '偏性流');
@@ -1762,20 +1793,20 @@ function loadInventoryFromStorage() {
 function saveToInventory(data) {
     // 產生唯一 ID (UUID) 以便刪除
     const uuid = Date.now().toString(36) + Math.random().toString(36).substr(2);
-    
+
     // 複製資料並加入 UUID
-    const item = { 
-        ...data, 
+    const item = {
+        ...data,
         uuid: uuid,
         time: new Date().toLocaleString()
     };
-    
+
     inventoryStorage.unshift(item); // 最新在最前
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
 
 // 3. UI: 開關背包視窗
-window.toggleInventoryModal = function() {
+window.toggleInventoryModal = function () {
     const modal = document.getElementById('inventory-modal');
     if (modal.classList.contains('hidden')) {
         modal.classList.remove('hidden');
@@ -1817,7 +1848,7 @@ function renderInventory() {
 }
 
 // 5. 刪除單一物品
-window.deleteInventoryItem = function(uuid) {
+window.deleteInventoryItem = function (uuid) {
     if (confirm("確定要銷毀這顆丹藥嗎？")) {
         inventoryStorage = inventoryStorage.filter(item => item.uuid !== uuid);
         localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
@@ -1826,7 +1857,7 @@ window.deleteInventoryItem = function(uuid) {
 };
 
 // 6. 清空背包
-window.clearInventoryWithConfirm = function() {
+window.clearInventoryWithConfirm = function () {
     if (confirm("⚠️ 警告：確定要銷毀背包內「所有」丹藥嗎？此操作無法復原！")) {
         inventoryStorage = [];
         localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
@@ -1835,13 +1866,13 @@ window.clearInventoryWithConfirm = function() {
 };
 
 // 7. 匯出 JSON
-window.exportInventoryToJSON = function() {
+window.exportInventoryToJSON = function () {
     if (inventoryStorage.length === 0) { alert("背包是空的，無法匯出！"); return; }
-    
+
     const dataStr = JSON.stringify(inventoryStorage, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = "CurrentDrugs.json";
@@ -1850,12 +1881,12 @@ window.exportInventoryToJSON = function() {
 };
 
 // 8. 匯出 CSV (Excel 可讀)
-window.exportInventoryToCSV = function() {
+window.exportInventoryToCSV = function () {
     if (inventoryStorage.length === 0) { alert("背包是空的，無法匯出！"); return; }
 
     // 加入 BOM (\uFEFF) 讓 Excel 正確識別 UTF-8 中文
     let csvContent = "\uFEFF";
-    
+
     // 表頭
     csvContent += "藥ID,藥名,五行屬性,品質,毒素,主治症狀,服藥效果\n";
 
@@ -1864,7 +1895,7 @@ window.exportInventoryToCSV = function() {
         // 處理可能包含逗號的文字，加上引號
         const symptoms = `"${item.symptoms}"`;
         const reaction = `"${item.reaction}"`;
-        
+
         const row = [
             item.id,
             item.name,
@@ -1874,13 +1905,13 @@ window.exportInventoryToCSV = function() {
             symptoms,
             reaction
         ].join(",");
-        
+
         csvContent += row + "\n";
     });
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = "CurrentDrugs.csv";
@@ -1888,7 +1919,7 @@ window.exportInventoryToCSV = function() {
     URL.revokeObjectURL(url);
 };
 // ★★★ [新增] 配方療效視窗開關 ★★★
-window.toggleEffectModal = function() {
+window.toggleEffectModal = function () {
     const modal = document.getElementById('effect-modal');
     if (modal.classList.contains('hidden')) {
         modal.classList.remove('hidden');
@@ -1907,7 +1938,7 @@ function renderEffectList() {
     for (let sId in SymptomsDB) {
         const symptom = SymptomsDB[sId];
         const symptomName = TextDB[symptom.descId]; // 取得症狀名稱 (如 "安神/安眠")
-        
+
         // 2. 搜尋對應配方
         // 篩選條件：配方的 symptoms 陣列中包含當前 sId
         // 注意：sId 從 for-in 出來是字串，需要轉數字比對
@@ -1932,21 +1963,21 @@ function renderEffectList() {
 
         // 3-2. 內容列 (Recipes List)
         let rowsHtml = `<div class="effect-details" style="display:none;">`; // 預設 display: none (閉合)
-        
+
         matchedRecipes.forEach(recipe => {
-        const rName = TextDB[recipe.nameId];
-        const rElement = recipe.element;
-        // 取得五行顏色
-        // ▼ 修改這裡，同樣加入 "全"
-        const colorMap = { 
-            "金": "#C0C0C0", 
-            "木": "#4CAF50", 
-            "水": "#2196F3", 
-            "火": "#FF5252", 
-            "土": "#FFC107",
-            "全": "#FFFFFF" // ✨ 新增
-        };
-        const elColor = colorMap[rElement] || "#888";
+            const rName = TextDB[recipe.nameId];
+            const rElement = recipe.element;
+            // 取得五行顏色
+            // ▼ 修改這裡，同樣加入 "全"
+            const colorMap = {
+                "金": "#C0C0C0",
+                "木": "#4CAF50",
+                "水": "#2196F3",
+                "火": "#FF5252",
+                "土": "#FFC107",
+                "全": "#FFFFFF" // ✨ 新增
+            };
+            const elColor = colorMap[rElement] || "#888";
 
             rowsHtml += `
                 <div class="effect-recipe-row">
