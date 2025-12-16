@@ -224,7 +224,6 @@ function startGame() {
     setStep(0);
 }
 
-// 修改 setStep
 function setStep(step) {
     currentStep = step;
     const title = document.getElementById('step-title');
@@ -233,35 +232,35 @@ function setStep(step) {
     const matGrid = document.getElementById('material-grid');
     const weighPanel = document.getElementById('weighing-panel');
 
+    // 清除舊的佈局 class
     contentPanel.classList.remove('split-layout');
-    matGrid.classList.remove('disabled-grid');
+    if (matGrid) matGrid.classList.remove('disabled-grid');
 
     if (step === 0) {
         title.textContent = "步驟 1/2：選擇主要材料";
         instruct.textContent = "請選擇投入量較多的材料。";
-        switchPanel('material-grid');
+        switchPanel('material-grid'); // 顯示材料列表
 
     } else if (step === 1) {
         title.textContent = "步驟 1/2：秤重";
         prepareWeighingPanel();
-        switchPanel('material-grid');
-        weighPanel.classList.remove('hidden');
-        contentPanel.classList.add('split-layout');
-        matGrid.classList.add('disabled-grid');
+        
+        // ★★★ 修改：切換至秤重面板 (因為 initMaterialGrid 修好了，這裡會自動隱藏材料列表) ★★★
+        switchPanel('weighing-panel'); 
 
     } else if (step === 2) {
         title.textContent = "步驟 2/2：選擇次要材料";
         instruct.textContent = "請選擇投入量較少的材料。";
         switchPanel('material-grid');
+        // 清除選取狀態
         document.querySelectorAll('.mat-btn').forEach(b => b.classList.remove('selected-mat'));
 
     } else if (step === 3) {
         title.textContent = "步驟 2/2：秤重";
         prepareWeighingPanel();
-        switchPanel('material-grid');
-        weighPanel.classList.remove('hidden');
-        contentPanel.classList.add('split-layout');
-        matGrid.classList.add('disabled-grid');
+        
+        // ★★★ 修改：切換至秤重面板 ★★★
+        switchPanel('weighing-panel');
 
     } else if (step === 4) {
         title.textContent = "煉製儀式";
@@ -271,11 +270,7 @@ function setStep(step) {
         resetRitualStates();
         updateRitualBtn();
         switchPanel('ritual-panel');
-        if (matGrid) {
-            matGrid.classList.add('hidden');
-            matGrid.style.display = 'none';
-        }
-
+        
     } else if (step === 5) {
         title.textContent = "結算中";
         switchPanel('result-panel');
@@ -731,23 +726,25 @@ function drawTooltip(ctx, text, x, y, cw, ch) {
 function initMaterialGrid() {
     const grid = document.getElementById('material-grid');
     if (!grid) return;
+    
     grid.innerHTML = "";
-    grid.style.display = '';
-    grid.className = "";
+    grid.style.display = ''; 
+    
+    // ★★★ [關鍵修正] 不能清空所有 class，必須保留 panel-view ★★★
+    // 否則 switchPanel 函式會抓不到它，導致無法隱藏
+    grid.className = "panel-view"; 
 
     for (let key in MaterialDB) {
         const mat = MaterialDB[key];
         const btn = document.createElement('div');
         btn.className = "mat-btn";
         btn.id = `mat-btn-${key}`;
-
+        
         const matName = TextDB[mat.nameId] || key;
-
-        // ★★★ 修改點：按鈕內容僅有名稱 ★★★
+        
         btn.innerHTML = `<strong>${matName}</strong>`;
-        // ★★★ 修改點：Tooltip 顯示詳細資訊 ★★★
-        btn.title = `五行: ${mat.element}\n強度上限: ${mat.max}`;
-
+        btn.title = `五行: ${mat.element}\n強度上限: ${mat.max}`; 
+        
         btn.onclick = () => selectMaterial(key);
         grid.appendChild(btn);
     }

@@ -34,7 +34,9 @@ body {
 }
 
 /* 通用隱藏 */
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
 /* =========================================
    2. 抬頭顯示器 (HUD / Header)
@@ -55,7 +57,7 @@ body {
     color: #d4af37;
     margin: 0;
     font-size: 1.8rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 #instruction-text {
@@ -70,7 +72,8 @@ body {
 }
 
 /* 頂部功能按鈕 (背包/紀錄) */
-.inventory-btn, .history-btn {
+.inventory-btn,
+.history-btn {
     border: none;
     padding: 6px 15px;
     color: white;
@@ -81,11 +84,23 @@ body {
     transition: all 0.2s;
 }
 
-.inventory-btn { background: #27ae60; }
-.inventory-btn:hover { background: #2ecc71; box-shadow: 0 0 10px rgba(46, 204, 113, 0.4); }
+.inventory-btn {
+    background: #27ae60;
+}
 
-.history-btn { background: #e67e22; }
-.history-btn:hover { background: #f39c12; box-shadow: 0 0 10px rgba(243, 156, 18, 0.4); }
+.inventory-btn:hover {
+    background: #2ecc71;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
+}
+
+.history-btn {
+    background: #e67e22;
+}
+
+.history-btn:hover {
+    background: #f39c12;
+    box-shadow: 0 0 10px rgba(243, 156, 18, 0.4);
+}
 
 /* =========================================
    3. 互動區域佈局 (Interactive Area)
@@ -167,7 +182,7 @@ body {
     border-radius: 4px;
     transition: all 0.2s;
     text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     position: relative;
 }
 
@@ -190,9 +205,9 @@ body {
 
 /* 流派選擇 */
 .mode-selection-container {
-    display: flex !important; 
+    display: flex !important;
     justify-content: center;
-    gap: 30px; 
+    gap: 30px;
     width: 100%;
 }
 
@@ -211,7 +226,7 @@ body {
 
 .mode-btn:hover {
     transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
 }
 
 .mode-name {
@@ -230,11 +245,12 @@ body {
 }
 
 .mode-btn:hover .mode-name {
-    margin-bottom: 10px; 
+    margin-bottom: 10px;
 }
+
 .mode-btn:hover .mode-desc {
     opacity: 1;
-    max-height: 50px; 
+    max-height: 50px;
 }
 
 /* =========================================
@@ -245,8 +261,17 @@ body {
     width: 100%;
 }
 
-#weigh-mat-name { color: #d4af37; margin: 0 0 5px 0; font-size: 1.5rem; }
-#weigh-mat-desc { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
+#weigh-mat-name {
+    color: #d4af37;
+    margin: 0 0 5px 0;
+    font-size: 1.5rem;
+}
+
+#weigh-mat-desc {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
 
 .scale-readout {
     font-family: "Consolas", monospace;
@@ -260,28 +285,66 @@ body {
     text-shadow: 0 0 10px rgba(64, 224, 208, 0.4);
 }
 
-#weight-slider { width: 80%; margin: 20px 0; accent-color: #d4af37; cursor: pointer; }
-
-.weight-controls { display: flex; gap: 10px; justify-content: center; }
-.adjust-btn {
-    background: #333; color: #fff; border: 1px solid #555;
-    padding: 8px 15px; cursor: pointer; border-radius: 4px;
+/* 修改 Slider 樣式以置中 */
+#weight-slider { 
+    width: 80%; 
+    /* 關鍵修改：上下 20px，左右 auto (自動置中) */
+    margin: 20px auto; 
+    accent-color: #d4af37; 
+    /* 確保它是區塊元素，margin: auto 才會生效 */
+    display: block; 
+    cursor: pointer;
 }
-.adjust-btn:hover { background: #555; }
 
-.panel-actions { display: flex; gap: 15px; margin-top: 30px; justify-content: center; }
+.weight-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.adjust-btn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.adjust-btn:hover {
+    background: #555;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    justify-content: center;
+}
 
 .action-btn {
     min-width: 180px;
     background: linear-gradient(135deg, #b87333 0%, #d4af37 100%);
-    border: none; padding: 12px 30px;
-    font-size: 1.2rem; font-weight: bold; color: #1a0500;
-    cursor: pointer; border-radius: 30px;
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #1a0500;
+    cursor: pointer;
+    border-radius: 30px;
     box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
     transition: transform 0.1s, filter 0.2s;
 }
-.action-btn:hover { filter: brightness(1.15); transform: scale(1.05); }
-.action-btn:active { transform: scale(0.95); }
+
+.action-btn:hover {
+    filter: brightness(1.15);
+    transform: scale(1.05);
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
+
 .secondary-btn {
     margin-top: 15px;
     background: transparent;
@@ -291,7 +354,11 @@ body {
     cursor: pointer;
     border-radius: 20px;
 }
-.secondary-btn:hover { border-color: #aaa; color: #aaa; }
+
+.secondary-btn:hover {
+    border-color: #aaa;
+    color: #aaa;
+}
 
 
 /* --- 秤重 --- */
@@ -319,8 +386,16 @@ body {
     width: 100%;
 }
 
-.slider-container { width: 60%; }
-input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
+.slider-container {
+    
+    width: 60%;
+}
+
+input[type=range] {
+    width: 100%;
+    accent-color: #d4af37;
+    cursor: pointer;
+}
 
 #weight-display {
     font-size: 2.5rem;
@@ -332,41 +407,79 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     font-family: "Consolas", monospace;
     text-shadow: 0 0 10px rgba(64, 224, 208, 0.4);
 }
-.manual-btns { display: flex; gap: 10px; }
-.manual-btns button {
-    background: #333; color: #fff; border: 1px solid #555;
-    padding: 8px 15px; cursor: pointer; border-radius: 4px;
+
+.manual-btns {
+    display: flex;
+    gap: 10px;
 }
-.manual-btns button:hover { background: #555; }
+
+.manual-btns button {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.manual-btns button:hover {
+    background: #555;
+}
+
 /* =========================================
    6. 儀式面板 (Ritual)
    ========================================= */
 #pot-status {
-    background: #151515; padding: 15px; border-radius: 8px;
-    margin-bottom: 20px; width: 60%; border: 1px dashed #444;
+    background: #151515;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    width: 60%;
+    border: 1px dashed #444;
 }
-#pot-list { list-style: none; padding: 0; margin: 0; color: #bbb; }
-#pot-list li { padding: 5px 0; border-bottom: 1px solid #222; }
+
+#pot-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: #bbb;
+}
+
+#pot-list li {
+    padding: 5px 0;
+    border-bottom: 1px solid #222;
+}
 
 .ritual-step-ui {
-    width: 60%; padding: 20px; border-radius: 8px; margin: 10px 0;
-    text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    background-color: #2a2a2a; border: 2px solid #555;
+    width: 60%;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 10px 0;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    background-color: #2a2a2a;
+    border: 2px solid #555;
     animation: fadeIn 0.3s;
 }
 
 /* 進度條 */
 
 .progress-bar-bg {
-    width: 100%; height: 30px; background-color: #111;
-    border-radius: 15px; overflow: hidden; border: 2px solid #666;
+    width: 100%;
+    height: 30px;
+    background-color: #111;
+    border-radius: 15px;
+    overflow: hidden;
+    border: 2px solid #666;
     position: relative;
 }
 
 #grind-progress-fill {
-    width: 0%; height: 100%;
+    width: 0%;
+    height: 100%;
     background: linear-gradient(90deg, #FFD700, #FFA500);
 }
+
 #grind-next-btn {
     font-size: 1rem;
     padding: 10px 20px;
@@ -374,7 +487,11 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     border: 1px solid #aaa;
     color: #aaa;
 }
-#grind-next-btn:hover { border-color: #fff; color: #fff; }
+
+#grind-next-btn:hover {
+    border-color: #fff;
+    color: #fff;
+}
 
 /* --- 儀式面板 --- */
 #pot-status {
@@ -385,97 +502,198 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     width: 50%;
     border: 1px dashed #444;
 }
-#pot-list { list-style: none; padding: 0; margin: 0; color: #bbb; }
-#pot-list li { padding: 5px 0; border-bottom: 1px solid #222; }
+
+#pot-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: #bbb;
+}
+
+#pot-list li {
+    padding: 5px 0;
+    border-bottom: 1px solid #222;
+}
 
 /* 進度條容器 */
-#grind-container, #fire-container, #auxiliary-container, #wait-container {
+#grind-container,
+#fire-container,
+#auxiliary-container,
+#wait-container {
     padding: 20px;
     border-radius: 8px;
     margin: 20px 0;
     width: 60%;
     animation: fadeIn 0.3s;
     text-align: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
-#grind-container { background-color: #2a2a2a; border: 2px solid #555; }
-.active-grind { background: #FF4500 !important; color: #fff !important; }
+#grind-container {
+    background-color: #2a2a2a;
+    border: 2px solid #555;
+}
+
+.active-grind {
+    background: #FF4500 !important;
+    color: #fff !important;
+}
 
 /* 生火格 */
 #fire-progress-container {
-    width: 100%; height: 40px; background-color: #111;
-    border-radius: 6px; margin: 15px 0; display: flex;
-    justify-content: space-between; padding: 4px; box-sizing: border-box; border: 1px solid #444;
+    width: 100%;
+    height: 40px;
+    background-color: #111;
+    border-radius: 6px;
+    margin: 15px 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 4px;
+    box-sizing: border-box;
+    border: 1px solid #444;
 }
+
 .fire-segment {
-    width: 4%; height: 100%; background-color: #333;
-    border-radius: 3px; margin: 0 1px; transition: background-color 0.1s;
+    width: 4%;
+    height: 100%;
+    background-color: #333;
+    border-radius: 3px;
+    margin: 0 1px;
+    transition: background-color 0.1s;
 }
+
 #fire-ratio-display {
-    font-family: "Consolas", monospace; font-size: 1.5rem;
-    color: #FF4500; text-shadow: 0 0 5px rgba(255, 69, 0, 0.5); font-weight: bold;
+    font-family: "Consolas", monospace;
+    font-size: 1.5rem;
+    color: #FF4500;
+    text-shadow: 0 0 5px rgba(255, 69, 0, 0.5);
+    font-weight: bold;
 }
 
 #auxiliary-count {
-    font-size: 2.5rem; font-weight: bold; color: #00FF7F;
-    font-family: "Consolas", monospace; text-shadow: 0 0 10px rgba(0, 255, 127, 0.6);
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #00FF7F;
+    font-family: "Consolas", monospace;
+    text-shadow: 0 0 10px rgba(0, 255, 127, 0.6);
 }
 
 .spinner {
-    width: 40px; height: 40px; border: 4px solid #444; border-top: 4px solid #3498db;
-    border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #444;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
 }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
 
 /* =========================================
    7. 結算結果 (Result & Map)
    ========================================= */
 #result-panel {
-    text-align: center; width: 100%; height: 100%;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .map-container {
-    position: relative; width: 320px; height: 320px;
-    border: 1px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    position: relative;
+    width: 320px;
+    height: 320px;
+    border: 1px solid #333;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
-#recipe-map { background-color: #000; width: 100%; height: 100%; cursor: default; }
-#recipe-map.grabbable { cursor: grab; }
-#recipe-map.grabbing { cursor: grabbing; }
+
+#recipe-map {
+    background-color: #000;
+    width: 100%;
+    height: 100%;
+    cursor: default;
+}
+
+#recipe-map.grabbable {
+    cursor: grab;
+}
+
+#recipe-map.grabbing {
+    cursor: grabbing;
+}
 
 .map-controls {
-    position: absolute; bottom: 10px; right: 10px;
-    display: flex; flex-direction: column; gap: 5px; z-index: 10;
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 10;
 }
+
 .map-ctrl-btn {
-    width: 30px; height: 30px; background: rgba(50,50,50,0.8);
-    color: #d4af37; border: 1px solid #d4af37; cursor: pointer;
+    width: 30px;
+    height: 30px;
+    background: rgba(50, 50, 50, 0.8);
+    color: #d4af37;
+    border: 1px solid #d4af37;
+    cursor: pointer;
 }
 
 #process-text {
-    font-size: 2rem; color: #fff; position: absolute;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    text-shadow: 0 0 10px #000; z-index: 500;
+    font-size: 2rem;
+    color: #fff;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-shadow: 0 0 10px #000;
+    z-index: 500;
 }
 
 .restart-btn {
-    margin-top: 20px; background: transparent; border: 2px solid #c0392b;
-    color: #c0392b; padding: 10px 40px; font-size: 1.1rem;
-    cursor: pointer; border-radius: 30px; transition: 0.3s;
+    margin-top: 20px;
+    background: transparent;
+    border: 2px solid #c0392b;
+    color: #c0392b;
+    padding: 10px 40px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    border-radius: 30px;
+    transition: 0.3s;
 }
-.restart-btn:hover { background: #c0392b; color: white; }
+
+.restart-btn:hover {
+    background: #c0392b;
+    color: white;
+}
 
 /* === 結算結果外框寬度鎖定 === */
 #final-result-container {
-    width: 800px;              /* ★ 固定寬度（你可自行調） */
+    width: 800px;
+    /* ★ 固定寬度（你可自行調） */
     max-width: 650px;
     min-width: 650px;
 
     margin: 0 auto;
     box-sizing: border-box;
-    display: flex;          /* ★ 關鍵 */
-    height: 520px;          /* ★ 給一個固定高度（可調） */
+    display: flex;
+    /* ★ 關鍵 */
+    height: 520px;
+    /* ★ 給一個固定高度（可調） */
 }
 
 /* 右欄內容只負責捲動，不影響整體寬度 */
@@ -494,8 +712,10 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
    ========================================= */
 .modal {
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-color: rgba(0, 0, 0, 0.85);
     z-index: 2000;
     display: flex;
@@ -509,11 +729,12 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     background-color: #1e1e24;
     width: 650px;
     max-width: 95vw;
-    height: 80vh; /* 固定高度 */
+    height: 80vh;
+    /* 固定高度 */
     border-radius: 10px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
     animation: fadeIn 0.3s;
 }
 
@@ -522,6 +743,7 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     border: 2px solid #27ae60;
     box-shadow: 0 0 30px rgba(39, 174, 96, 0.2);
 }
+
 /* --- Modal --- */
 #history-modal {
     position: fixed;
@@ -618,12 +840,26 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     align-items: center;
     flex-shrink: 0;
 }
-.modal-header h2 { margin: 0; color: #fff; font-size: 1.2rem; }
-.close-btn { font-size: 1.5rem; cursor: pointer; color: #888; }
-.close-btn:hover { color: #fff; }
+
+.modal-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.2rem;
+}
+
+.close-btn {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
 
 /* 列表容器 */
-#history-list-container, #inventory-list-container {
+#history-list-container,
+#inventory-list-container {
     flex: 1;
     overflow-y: auto;
     padding: 15px;
@@ -665,7 +901,7 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
 
 .history-tab-btn:hover {
     color: #aaa;
-    background-color: rgba(255,255,255,0.05);
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* 激活狀態的頁籤 */
@@ -676,46 +912,98 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
 }
 
 /* 列表項目 */
-.history-item, .inventory-item {
-    background: #222; margin-bottom: 8px; border: 1px solid #444;
-    border-radius: 4px; overflow: hidden;
+.history-item,
+.inventory-item {
+    background: #222;
+    margin-bottom: 8px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    overflow: hidden;
 }
 
 /* 摘要行 */
-.history-summary, .inventory-item {
-    padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;
+.history-summary,
+.inventory-item {
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
-.history-summary:hover { background: #2a2a2a; cursor: pointer; }
+
+.history-summary:hover {
+    background: #2a2a2a;
+    cursor: pointer;
+}
 
 /* 詳細內容 */
 .history-details {
-    padding: 15px; border-top: 1px dashed #444; background: #181818; color: #ccc; font-size: 0.9rem; line-height: 1.5;
+    padding: 15px;
+    border-top: 1px dashed #444;
+    background: #181818;
+    color: #ccc;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 /* 標籤 */
 .grade-tag {
-    padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-right: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    margin-right: 8px;
 }
 
 /* 背包工具列 */
 .inventory-toolbar {
-    display: flex; gap: 10px; padding: 10px; background: #222; border-bottom: 1px solid #444;
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    background: #222;
+    border-bottom: 1px solid #444;
 }
+
 .export-btn {
-    flex: 1; padding: 8px; border: 1px solid #555; background: #333; color: #ddd; cursor: pointer;
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #555;
+    background: #333;
+    color: #ddd;
+    cursor: pointer;
 }
-.export-btn:hover { border-color: #fff; color: #fff; }
+
+.export-btn:hover {
+    border-color: #fff;
+    color: #fff;
+}
 
 /* 刪除按鈕 */
 .clear-btn {
-    background: #c0392b; color: white; border: none; padding: 10px 30px;
-    border-radius: 4px; cursor: pointer; font-weight: bold;
+    background: #c0392b;
+    color: white;
+    border: none;
+    padding: 10px 30px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
 }
-.item-delete-btn, .btn-destroy-one {
-    background: none; border: 1px solid #444; color: #666; cursor: pointer;
-    padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;
+
+.item-delete-btn,
+.btn-destroy-one {
+    background: none;
+    border: 1px solid #444;
+    color: #666;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
 }
-.item-delete-btn:hover, .btn-destroy-one:hover { color: #ff4444; border-color: #ff4444; }
+
+.item-delete-btn:hover,
+.btn-destroy-one:hover {
+    color: #ff4444;
+    border-color: #ff4444;
+}
 
 /* --- Debug 區修改 --- */
 #debug-area {
@@ -731,34 +1019,35 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
 
 /* 上半部：Log (50%) */
 .debug-log-section {
-    flex: 1; 
+    flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     border-bottom: 1px solid #333;
 }
 
-#console-output { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 10px; 
-    color: #4CAF50; 
+#console-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    color: #4CAF50;
 }
 
 /* 下半部：Map (50% or fixed) */
 .debug-map-section {
-    flex: 0 0 360px; /* 固定高度給地圖 */
+    flex: 0 0 360px;
+    /* 固定高度給地圖 */
     display: flex;
     flex-direction: column;
     background-color: #080808;
     border-top: 2px solid #333;
 }
 
-.debug-header { 
-    background: #1a1a1a; 
-    padding: 8px 10px; 
-    border-bottom: 1px solid #444; 
-    color: #888; 
+.debug-header {
+    background: #1a1a1a;
+    padding: 8px 10px;
+    border-bottom: 1px solid #444;
+    color: #888;
     font-size: 0.8rem;
     letter-spacing: 1px;
     flex-shrink: 0;
@@ -773,17 +1062,19 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     align-items: center;
     padding: 10px;
     overflow: hidden;
-    position: relative; /* 為了讓控制按鈕定位 */
+    position: relative;
+    /* 為了讓控制按鈕定位 */
 }
 
 #recipe-map {
     background-color: #000;
     border: 1px solid #333;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     /* 保持正方形 */
     width: 320px;
     height: 320px;
-    cursor: default; /* 預設游標 */
+    cursor: default;
+    /* 預設游標 */
 }
 
 #recipe-map.grabbable {
@@ -818,7 +1109,8 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    min-width: unset !important; /* 覆蓋 action-btn 可能的影響 */
+    min-width: unset !important;
+    /* 覆蓋 action-btn 可能的影響 */
     padding: 0;
 }
 
@@ -831,15 +1123,26 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     transform: scale(0.95);
 }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 /* --- 左上角選單容器 (取代舊的 history-btn-container) --- */
 #menu-container {
     position: absolute;
     top: 20px;
     left: 20px;
     z-index: 100;
-    display: flex; /* 讓按鈕橫向排列 */
-    gap: 15px;     /* 按鈕之間的間距 */
+    display: flex;
+    /* 讓按鈕橫向排列 */
+    gap: 15px;
+    /* 按鈕之間的間距 */
 }
 
 /* 個別按鈕項目 */
@@ -867,7 +1170,7 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     justify-content: center;
     align-items: center;
     font-size: 24px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     color: #d4af37;
     transition: all 0.2s;
 }
@@ -883,13 +1186,15 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     font-size: 0.9rem;
     color: #d4af37;
     font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
+
 /* --- 配方療效視窗樣式 (v15.0 Addon) --- */
 
 /* 視窗特定樣式 (紫色系) */
 .effect-content {
-    border: 2px solid #9b59b6 !important; /* 紫色邊框 */
+    border: 2px solid #9b59b6 !important;
+    /* 紫色邊框 */
     box-shadow: 0 0 30px rgba(155, 89, 182, 0.3);
 }
 
@@ -912,20 +1217,26 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     background-color: #252530;
     transition: background 0.2s;
 }
-.effect-summary:hover { background-color: #333340; }
+
+.effect-summary:hover {
+    background-color: #333340;
+}
 
 .effect-title {
     font-weight: bold;
-    color: #9b59b6; /* 紫色文字 */
+    color: #9b59b6;
+    /* 紫色文字 */
     font-size: 1.1rem;
 }
 
 /* 配方列表內容區 */
 .effect-details {
-    padding: 0; /* 讓內部列表貼邊 */
+    padding: 0;
+    /* 讓內部列表貼邊 */
     background: #181818;
     border-top: 1px solid #444;
-    display: none; /* 預設閉合 */
+    display: none;
+    /* 預設閉合 */
 }
 
 /* 內部配方行 */
@@ -937,4 +1248,7 @@ input[type=range] { width: 100%; accent-color: #d4af37; cursor: pointer; }
     font-size: 0.95rem;
     color: #ccc;
 }
-.effect-recipe-row:last-child { border-bottom: none; }
+
+.effect-recipe-row:last-child {
+    border-bottom: none;
+}
