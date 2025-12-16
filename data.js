@@ -6,15 +6,17 @@ const Elements = {
     WOOD: "木", 
     WATER: "水", 
     FIRE: "火", 
-    EARTH: "土"
+    EARTH: "土",
+    ALL: "全" // ✨ 新增這行
 };
 
 const ElementColors = {
-    "金": "#E0E0E0", // 銀白
-    "木": "#4CAF50", // 翠綠
-    "水": "#29B6F6", // 深藍
-    "火": "#FF5252", // 赤紅
-    "土": "#FFC107"  // 土黃
+    "金": "#E0E0E0", 
+    "木": "#4CAF50", 
+    "水": "#29B6F6", 
+    "火": "#FF5252", 
+    "土": "#FFC107",
+    "全": "#b700ffff"  // ✨ 新增這行，全屬性用白色或彩虹色代表
 };
 
 // --- 2. 文案資料庫 (TextDB) ---
@@ -123,108 +125,107 @@ const MaterialDB = {
 };
 
 // --- 4. 配方資料庫 ---
-// (保留您原本的 RecipeDB，完全不用動)
-// --- 配方資料庫（可直接取代用） ---
+// (更新依據：配方表_v2.png)
 const RecipeDB = [
     {
-        nameId: 28,
+        nameId: 28, // 九轉金丹
         targets: ["DAN_SHA", "SHUI_YIN"],
         ratio: [0.5, 0.3],
-        element: Elements.METAL,
+        element: Elements.FIRE, // 表格更新：金 -> 火
         grindTarget: 0.6,
         descId: 8,
         effectId: 18,
         symptoms: [2, 4]
     },
     {
-        nameId: 29,
-        targets: ["ZHONG_RU_SHI", "SHI_LIU_HUANG"],
+        nameId: 29, // 五石散
+        targets: ["ZHONG_RU_SHI", "SHI_LIU_HUANG"], // 修正拼字 SHI_RIU -> SHI_LIU
         ratio: [1.0, 0.5],
-        element: Elements.EARTH,
+        element: Elements.METAL, // 表格更新：土 -> 金
         grindTarget: 0.6,
         descId: 9,
         effectId: 19,
         symptoms: [2, 4]
     },
     {
-        nameId: 30,
-        targets: ["DAN_SHA", "ZENG_QING"],
+        nameId: 30, // 太一神精丹
+        targets: ["DAN_SHA", "ZENG_QING"], // 修正拼字 ZEN -> ZENG
         ratio: [0.1, 0.1],
-        element: Elements.WOOD,
+        element: Elements.FIRE, // 表格更新：木 -> 火
         grindTarget: 0.6,
         descId: 10,
         effectId: 20,
         symptoms: [1, 5]
     },
     {
-        nameId: 31,
-        targets: ["SHUI_YIN", "SHI_LIU_HUANG"],
+        nameId: 31, // 小還丹
+        targets: ["SHUI_YIN", "SHI_LIU_HUANG"], // 修正拼字 SHI_RIU -> SHI_LIU
         ratio: [1.0, 0.5],
-        element: Elements.WATER,
+        element: Elements.METAL, // 表格更新：水 -> 金
         grindTarget: 0.6,
         descId: 11,
         effectId: 21,
         symptoms: [2, 3]
     },
     {
-        nameId: 32,
+        nameId: 32, // 太清金液
         targets: ["HUANG_JIN", "SHUI_YIN"],
         ratio: [10.0, 20.0],
-        element: Elements.EARTH,
+        element: Elements.EARTH, // 維持土
         grindTarget: 0.6,
         descId: 12,
         effectId: 22,
         symptoms: [3, 4]
     },
     {
-        nameId: 33,
+        nameId: 33, // 紫雪丹
         targets: ["SHI_GAO", "DAN_SHA"],
         ratio: [10.0, 0.2],
-        element: Elements.FIRE,
+        element: Elements.METAL, // 表格更新：火 -> 金
         grindTarget: 0.6,
         descId: 13,
         effectId: 23,
         symptoms: [1, 5]
     },
     {
-        nameId: 34,
-        targets: ["DAN_SHA", "XIONG_HUANG"],
+        nameId: 34, // 赤雪流珠丹
+        targets: ["DAN_SHA", "XIONG_HUANG"], // 修正拼字 XUNG -> XIONG
         ratio: [0.8, 0.3],
-        element: Elements.EARTH,
+        element: Elements.FIRE, // 表格更新：土 -> 火
         grindTarget: 0.6,
         descId: 14,
         effectId: 24,
-        symptoms: [1, 3]
+        symptoms: [3, 5]
     },
     {
-        nameId: 35,
-        targets: ["XIONG_HUANG", "DAN_SHA"],
+        nameId: 35, // 三五神丹
+        targets: ["XIONG_HUANG", "DAN_SHA"], // 修正拼字 XUNG -> XIONG
         ratio: [0.5, 2.0],
-        element: Elements.FIRE,
+        element: Elements.EARTH, // 表格更新：火 -> 土
         grindTarget: 0.6,
         descId: 15,
         effectId: 25,
-        symptoms: [2, 5]
+        symptoms: [1, 3]
     },
     {
-        nameId: 36,
-        targets: ["SHUI_YIN", "TONG"],
+        nameId: 36, // 琅玕華丹
+        targets: ["SHUI_YIN", "TONG"], // 修正拼字 TUNG -> TONG
         ratio: [2.0, 30.0],
-        element: Elements.METAL,
+        element: Elements.METAL, // 維持金
         grindTarget: 0.6,
         descId: 16,
         effectId: 26,
-        symptoms: [4, 5]
+        symptoms: [3, 4]
     },
     {
-        nameId: 37,
-        targets: ["DAN_SHA", "XIONG_HUANG"],
+        nameId: 37, // 五靈丹
+        targets: ["DAN_SHA", "XIONG_HUANG"], // 修正拼字 XUNG -> XIONG
         ratio: [50.0, 0.5],
-        element: Elements.ALL,
+        element: Elements.ALL, // 維持全屬性
         grindTarget: 0.6,
         descId: 17,
         effectId: 27,
-        symptoms: [1, 2]
+        symptoms: [2, 5]
     }
 ];
 

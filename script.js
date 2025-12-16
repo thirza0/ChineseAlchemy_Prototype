@@ -1164,7 +1164,7 @@ function calculateFinalResult() {
         
         if (success === 0 && bestRecipe) {
             let dist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
-            if (dist > SLAG_FALLBACK_DISTANCE) { isSlag = true; slagReason = "距離過遠"; bestRecipe = null; }
+            if (dist > SLAG_FALLBACK_DISTANCE) { isSlag = true; slagReason = "副材料不合且比例相差過大/"; bestRecipe = null; }
         }
     }
 
@@ -1176,7 +1176,7 @@ function calculateFinalResult() {
              if(d < minDist) { minDist = d; bestRecipe = r; }
         });
         isSlag = true;
-        if (!slagReason) slagReason = "未找到合適配方";
+        if (!slagReason) slagReason = "未找到合適配方(例外情況)";
     }
 
     // --- 5. 計算評級分數 ---
@@ -1305,8 +1305,17 @@ function updateResultUI(data) {
     const container = document.getElementById('final-result-container');
     
     // 1. 準備顏色
-    const elColorMap = { "金": "#C0C0C0", "木": "#4CAF50", "水": "#2196F3", "火": "#FF5252", "土": "#FFC107" };
+    // ▼ 修改這裡，把 "全": "#FFFFFF" 加進去
+    const elColorMap = { 
+        "金": "#C0C0C0", 
+        "木": "#4CAF50", 
+        "水": "#2196F3", 
+        "火": "#FF5252", 
+        "土": "#FFC107",
+        "全": "#b700ffff" // ✨ 新增
+    }; 
     const elColor = elColorMap[data.element] || "#FFF";
+    // ...
 
     let qColor = "#777";
     if (data.quality === 'U' || data.quality === 'S') qColor = "#FFD700";
@@ -1913,11 +1922,19 @@ function renderEffectList() {
         let rowsHtml = `<div class="effect-details" style="display:none;">`; // 預設 display: none (閉合)
         
         matchedRecipes.forEach(recipe => {
-            const rName = TextDB[recipe.nameId];
-            const rElement = recipe.element;
-            // 取得五行顏色
-            const colorMap = { "金": "#C0C0C0", "木": "#4CAF50", "水": "#2196F3", "火": "#FF5252", "土": "#FFC107" };
-            const elColor = colorMap[rElement] || "#888";
+        const rName = TextDB[recipe.nameId];
+        const rElement = recipe.element;
+        // 取得五行顏色
+        // ▼ 修改這裡，同樣加入 "全"
+        const colorMap = { 
+            "金": "#C0C0C0", 
+            "木": "#4CAF50", 
+            "水": "#2196F3", 
+            "火": "#FF5252", 
+            "土": "#FFC107",
+            "全": "#FFFFFF" // ✨ 新增
+        };
+        const elColor = colorMap[rElement] || "#888";
 
             rowsHtml += `
                 <div class="effect-recipe-row">
