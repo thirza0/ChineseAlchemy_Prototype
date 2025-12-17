@@ -199,7 +199,13 @@ const TextDB = {
     122: "全身燥熱如火燒、心跳加速、皮膚發紅且對觸摸極度敏感，伴隨咳嗽（碳粉刺激）",
     123: "強烈的便秘（高嶺土吸水）、腹脹，隨後出現嘔吐感（銅離子刺激），讓人感到「氣實不飢」。",
     124: "全身發熱汗出、皮膚起紅疹、幻視（看見兵馬鬼神），精神極度亢奮且具有攻擊性。",
-    125: "視力暫時模糊後產生色彩異常敏銳的錯覺、腹痛絞痛、肌肉麻痺。"
+    125: "視力暫時模糊後產生色彩異常敏銳的錯覺、腹痛絞痛、肌肉麻痺。",
+
+    //補白石英、紫石英
+    126:"半透明的灰白色塊狀結晶，斷口呈貝殼狀，質地堅脆。",
+    127:"紫黑色的透光晶體，內部有黑色絮狀物，如深夜的星空。",
+    128:"白石英",
+    129:"紫石英"
 };
 
 // ★★★ 新增：症狀資料庫 (SymptomsDB) ★★★
@@ -316,7 +322,33 @@ const MaterialDB = {
         nameId: 74, element: Elements.EARTH, yinYang: 0, max: 1,
         color: "#9C3A2B", status: "天然", formula: "",
         toxin: 0.5, heatToxin: 1, descId: 83
+    },
+    BAI_SHI_YING: {
+        nameId: 128,              // 白石英
+        element: Elements.METAL,
+        yinYang: -2,
+        max: 1,
+        color: "#F0F8FF",
+        status: "天然",
+        formula: "",
+        toxin: 0.1,
+        heatToxin: 1,
+        descId: 126
+    },
+    ZI_SHI_YING: {
+        nameId: 129,              // 紫石英
+        element: Elements.FIRE,
+        yinYang: 2,
+        max: 4,
+        color: "#800080",
+        status: "天然",
+        formula: "",
+        toxin: 2,
+        heatToxin: 1,
+        descId: 127
     }
+
+
 };
 
 
