@@ -1465,10 +1465,10 @@ function updateResultUI(data) {
                             </div>
 
                             <div style="margin-bottom:10px;">
-                                <strong style="color:#d4af37;">🩺 主治：</strong> <span style="color:#bbb;">${data.symptoms}</span>
+                                <strong style="color:#d4af37;">🩺 主治症狀：</strong> <span style="color:#bbb;">${data.symptoms}</span>
                             </div>
                             <div style="margin-bottom:10px;">
-                                <strong style="color:#ff6b6b;">🤢 反應：</strong> <span style="color:#bbb;">${data.reaction}</span>
+                                <strong style="color:#ff6b6b;">🤢 服用反應：</strong> <span style="color:#bbb;">${data.reaction}</span>
                             </div>
                             
                             <hr style="border:0; border-top:1px dashed #444; margin:10px 0;">
