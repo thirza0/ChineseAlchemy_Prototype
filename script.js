@@ -2030,7 +2030,7 @@ function renderEffectList() {
                 "水": "#2196F3",
                 "火": "#FF5252",
                 "土": "#FFC107",
-                "全": "#FFFFFF" // ✨ 新增
+                "全": "#b700ffff" // ✨ 新增
             };
             const elColor = colorMap[rElement] || "#888";
 

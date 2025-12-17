@@ -215,7 +215,7 @@ const SymptomsDB = {
 // (完整版本，可直接整段取代)
 const MaterialDB = {
     DAN_SHA: {
-        nameId: 49, element: Elements.FIRE, yinYang: 0, max: 2,
+        nameId: 49, element: Elements.FIRE, yinYang: 2, max: 2,
         color: "#E34234", status: "天然", formula: "HgS",
         toxin: 10, heatToxin: 8.5, descId: 38
     },
@@ -283,7 +283,7 @@ const MaterialDB = {
         toxin: 30, heatToxin: 1, descId: 76
     },
     SONG_ZHI: {
-        nameId: 68, element: Elements.WOOD, yinYang: 1, max: 1,
+        nameId: 68, element: Elements.EARTH, yinYang: 1, max: 1,
         color: "#C9A24D", status: "天然", formula: "",
         toxin: 0.3, heatToxin: 1, descId: 77
     },
@@ -484,7 +484,7 @@ const RecipeDB = [
         nameId: 88, // 松脂茯苓丹
         targets: ["SONG_ZHI", "XIONG_HUANG"],
         ratio: [5.0, 0.5],
-        element: Elements.WOOD,
+        element: Elements.EARTH,
         yinYang: 1,
         grindTarget: 0.6,
         descId: 102,
