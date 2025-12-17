@@ -512,17 +512,17 @@ const RecipeDB = [
         effectId: 115,
         symptoms: [3, 5]
     },
-    {
-        nameId: 88, // 松脂茯苓丹
-        targets: ["SONG_ZHI", "XIONG_HUANG"],
-        ratio: [5.0, 0.5],
-        element: Elements.EARTH,
-        yinYang: 1,
-        grindTarget: 0.6,
-        descId: 102,
-        effectId: 116,
-        symptoms: [3, 4]
-    },
+    // {(因為是兩個土屬性，會待在原點，先拿掉)
+    //     nameId: 88, // 松脂茯苓丹
+    //     targets: ["SONG_ZHI", "XIONG_HUANG"],
+    //     ratio: [5.0, 0.5],
+    //     element: Elements.EARTH,
+    //     yinYang: 1,
+    //     grindTarget: 0.6,
+    //     descId: 102,
+    //     effectId: 116,
+    //     symptoms: [3, 4]
+    // },
     {
         nameId: 89, // 玉泉丸
         targets: ["BAI_YU", "ZHONG_RU_SHI"],
