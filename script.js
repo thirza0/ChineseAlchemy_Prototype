@@ -1238,6 +1238,8 @@ function calculateFinalResult() {
     matchRate *= penalty;
     let matchRatePct = Math.max(0, Math.min(100, matchRate * 100)).toFixed(1);
 
+    // script.js - 修改 calculateFinalResult 的評級區塊
+
     // --- 6. 決定品質評級 ---
     let quality = "D";
     let qualityPool = CommentsDB.SLAG;
@@ -1245,17 +1247,33 @@ function calculateFinalResult() {
     if (isSlag) {
         quality = "D";
     } else {
-        if (errorType === "MATERIAL") {
-            quality = "B"; qualityPool = CommentsDB.B;
-        } else {
-            let isPerfect = (matchRate >= 0.99) && (Math.abs(grindCoefficient - bestRecipe.grindTarget) < 0.01) && (bestDist < 0.01);
-            if (isPerfect) { quality = "U"; qualityPool = CommentsDB.U; }
-            else if (bestDist <= 0.05 && matchRate >= 0.95) { quality = "S"; qualityPool = CommentsDB.S; }
-            else if (bestDist <= 0.4 && matchRate >= 0.70) { quality = "A"; qualityPool = CommentsDB.A; }
-            else if (bestDist <= 1.0 && matchRate >= 0.50) { quality = "B"; qualityPool = CommentsDB.B; }
-            else { quality = "C"; qualityPool = CommentsDB.C; }
+        // ★★★ 修改處：移除強制鎖定 B 級的邏輯 ★★★
+        // 原本這裡有 if (errorType === "MATERIAL") { quality = "B"; ... }
+        // 現在我們直接讓數學決定命運！
+        
+        // 嚴格的數學判定標準
+        // 注意：即使拿到 A，如果 errorType 是 MATERIAL，最後的 Advice 還是會罵玩家用錯材料 (這是我們要的效果)
+        
+        let isPerfect = (matchRate >= 0.99) && (Math.abs(grindCoefficient - bestRecipe.grindTarget) < 0.01) && (bestDist < 0.01);
+        
+        if (isPerfect) { 
+            quality = "U"; qualityPool = CommentsDB.U; 
+        } else if (bestDist <= 0.05 && matchRate >= 0.95) { 
+            quality = "S"; qualityPool = CommentsDB.S; 
+        } else if (bestDist <= 0.4 && matchRate >= 0.70) { 
+            quality = "A"; qualityPool = CommentsDB.A; 
+        } else if (bestDist <= 1.0 && matchRate >= 0.50) { 
+            quality = "B"; qualityPool = CommentsDB.B; 
+        } else { 
+            quality = "C"; qualityPool = CommentsDB.C; 
         }
     }
+
+    // 後面的 Advice 邏輯不用動，它會繼續運作
+    // 如果是 A 級替代品，玩家會看到：
+    // 評級：A 級 (數值漂亮)
+    // 建議：呵，這材料嘛…… (大師依然能嘗出材料不對)
+    // 這非常有「雖然好用但不是正統」的味道！
 
     let randomComment = qualityPool[Math.floor(Math.random() * qualityPool.length)];
     let finalComment = isSlag ? slagReason + " " + randomComment : randomComment;
