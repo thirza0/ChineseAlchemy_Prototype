@@ -809,8 +809,21 @@ function selectMaterial(id) {
 
 function prepareWeighingPanel() {
     const mat = MaterialDB[selectedMatID];
-    document.getElementById('weigh-mat-name').textContent = TextDB[mat.nameId] || selectedMatID;
-    document.getElementById('weigh-mat-desc').textContent = TextDB[mat.descId] || "無描述";
+
+    const matName = TextDB[mat.nameId] || selectedMatID;
+    const matDesc = TextDB[mat.descId] || "無描述";
+    const matElement = mat.element; // 五行本體
+
+    document.getElementById('weigh-mat-name').textContent = matName;
+
+    // ★ 重點：在這裡補上五行顯示
+    document.getElementById('weigh-mat-desc').innerHTML = `
+        <div style="margin-bottom:6px;">${matDesc}</div>
+        <div style="color:#d4af37; font-weight:bold;">
+            五行屬性：${matElement}
+        </div>
+    `;
+
     updateWeightUI();
 }
 
@@ -850,6 +863,9 @@ function confirmAddMaterial() {
 }
 
 function cancelSelection() {
+    document.querySelectorAll('.mat-btn').forEach(btn => {
+        btn.classList.remove('selected-mat');
+    });
     if (currentStep === 1) setStep(0);
     else if (currentStep === 3) setStep(2);
 }
