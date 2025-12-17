@@ -1299,6 +1299,15 @@ function calculateFinalResult() {
     // --- 9. 渣滓處理 ---
     let finalName = isSlag ? "渣滓" : TextDB[bestRecipe.nameId];
     let finalElement = isSlag ? "無" : bestRecipe.element;
+    // --- 陰陽計算 ---
+    let finalYinYang = "無";
+
+    if (!isSlag && bestRecipe && typeof bestRecipe.yinYang === "number") {
+        // yinYang 範圍假設是 -3 ~ +3，轉成 1~7
+        const yyIndex = bestRecipe.yinYang + 4; // -3 → 1, 0 → 4, +3 → 7
+        finalYinYang = TextDB[yyIndex] || "未知";
+    }
+
     let finalDesc = isSlag ? "一坨黑乎乎的東西，散發著難以言喻的味道。" : TextDB[bestRecipe.descId];
     let displayDeviation = isSlag ? "---" : bestDist.toFixed(2);
     let displayMatch = isSlag ? "---" : matchRatePct;
@@ -1313,6 +1322,7 @@ function calculateFinalResult() {
         name: finalName,
         quality: quality,
         element: finalElement,
+        yinYang: finalYinYang, // ★ 新增
         qualityText: quality === "D" ? "渣滓" : quality + "級",
         deviation: displayDeviation,
         matchRate: displayMatch,
@@ -1358,7 +1368,6 @@ function updateResultUI(data) {
         "全": "#b700ffff" // ✨ 新增
     };
     const elColor = elColorMap[data.element] || "#FFF";
-    // ...
 
     let qColor = "#777";
     if (data.quality === 'U' || data.quality === 'S') qColor = "#FFD700";
@@ -1392,6 +1401,9 @@ function updateResultUI(data) {
                         <div style="display: block; padding: 15px; background: rgba(0,0,0,0.2);">
                             <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px dashed #444; padding-bottom:4px;">
                                 <span style="color:#888;">五行屬性</span> <span style="color:${elColor}; font-weight:bold;">${data.element}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px dashed #444; padding-bottom:4px;">
+                                <span style="color:#888;">陰陽屬性</span> <span style="color:${elColor}; font-weight:bold;">${data.yinYang}</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px dashed #444; padding-bottom:4px;">
                                 <span style="color:#888;">品質判定</span> <span style="font-weight:bold; color:#eee;">${data.qualityText}</span>
@@ -1680,16 +1692,25 @@ function renderHistory() {
             
             <div class="history-details" style="display:none;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <span>五行：<span style="color:${colors[item.element] || '#ccc'}; font-weight:bold;">${item.element}</span></span>
+                    <div style="display:flex; justify-content:space-between;">
+                <span>
+                    五行：
+                    <span style="color:${colors[item.element] || '#ccc'}; font-weight:bold;">
+                        ${item.element}
+                    </span>
+                </span>
+            </div>
+
                     <span>偏差：${item.deviation}</span>
                 </div>
+                <p><strong>陰陽：${item.yinYang || "無"}</p>
                 <p><strong>吻合率：</strong>${item.matchRate}%</p>
                 <p><strong>評語：</strong>${item.comment}</p>
                 
                 <hr style="border:0; border-top:1px solid #444; margin:8px 0;">
                 
-                <p style="margin:5px 0;"><strong>🩺 主治：</strong>${sym}</p>
-                <p style="margin:5px 0;"><strong>🤢 反應：</strong>${reac}</p>
+                <p style="margin:5px 0;"><strong>🩺 主要療效：</strong>${sym}</p>
+                <p style="margin:5px 0;"><strong>🤢 服藥反應：</strong>${reac}</p>
                 <p>
                     <strong>☠️ 累積毒素：</strong>
                     <span style="color:#ff6b6b; font-weight:bold;">

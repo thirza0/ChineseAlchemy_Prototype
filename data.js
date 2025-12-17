@@ -2,19 +2,19 @@
 
 // --- 1. 五行基礎定義 ---
 const Elements = {
-    METAL: "金", 
-    WOOD: "木", 
-    WATER: "水", 
-    FIRE: "火", 
+    METAL: "金",
+    WOOD: "木",
+    WATER: "水",
+    FIRE: "火",
     EARTH: "土",
     ALL: "全" // ✨ 新增這行
 };
 
 const ElementColors = {
-    "金": "#E0E0E0", 
-    "木": "#4CAF50", 
-    "水": "#29B6F6", 
-    "火": "#FF5252", 
+    "金": "#E0E0E0",
+    "木": "#4CAF50",
+    "水": "#29B6F6",
+    "火": "#FF5252",
     "土": "#FFC107",
     "全": "#b700ffff"  // ✨ 新增這行，全屬性用白色或彩虹色代表
 };
@@ -135,25 +135,25 @@ const TextDB = {
 // 對應「症狀對應.csv」
 const SymptomsDB = {
     1: { id: 1, element: Elements.WATER, descId: 60 },
-    2: { id: 2, element: Elements.FIRE,  descId: 61 },
+    2: { id: 2, element: Elements.FIRE, descId: 61 },
     3: { id: 3, element: Elements.EARTH, descId: 62 },
-    4: { id: 4, element: Elements.WOOD,  descId: 63 },
+    4: { id: 4, element: Elements.WOOD, descId: 63 },
     5: { id: 5, element: Elements.METAL, descId: 64 }
 };
 // --- 3. 材料資料庫 ---
 // (保留您原本的 MaterialDB，完全不用動)
 const MaterialDB = {
-    DAN_SHA: { nameId: 49, element: Elements.FIRE, max: 2, color: "#E34234", status: "天然", formula: "HgS", toxin: 10, heatToxin: 8.5, descId: 38 },
-    ZHONG_RU_SHI: { nameId: 50, element: Elements.METAL, max: 3, color: "#FBFBE8", status: "天然", formula: "CaCO₃", toxin: 0.5, heatToxin: 1, descId: 39 },
-    SHUI_YIN: { nameId: 51, element: Elements.METAL, max: 5, color: "#E5E4E2", status: "天然", formula: "Hg", toxin: 20, heatToxin: 5, descId: 40 },
-    HUANG_JIN: { nameId: 52, element: Elements.EARTH, max: 4, color: "#FFD700", status: "天然", formula: "Au", toxin: 0.1, heatToxin: 1, descId: 41 },
-    SHI_GAO: { nameId: 53, element: Elements.METAL, max: 3, color: "#FFFFFF", status: "天然", formula: "CaSO₄·2H₂O", toxin: 0.1, heatToxin: 1, descId: 42 },
-    XIONG_HUANG: { nameId: 54, element: Elements.EARTH, max: 2, color: "#FFA500", status: "天然", formula: "As₄S₄", toxin: 15, heatToxin: 65, descId: 43 },
-    SHI_LIU_HUANG: { nameId: 55, element: Elements.EARTH, max: 3, color: "#FDFD96", status: "天然", formula: "S或 S8", toxin: 5, heatToxin: 1, descId: 44 },
-    ZENG_QING: { nameId: 56, element: Elements.WOOD, max: 2, color: "#40E0D0", status: "天然", formula: "Cu₂(OH)₂CO₃", toxin: 40, heatToxin: 1, descId: 45 },
-    TONG: { nameId: 57, element: Elements.FIRE, max: 2, color: "#B87333", status: "提煉", formula: "Cu", toxin: 5, heatToxin: 1, descId: 46 },
-    HEI_QIAN: { nameId: 58, element: Elements.WATER, max: 3, color: "#2F353B", status: "天然", formula: "Pb", toxin: 25, heatToxin: 1, descId: 47 },
-    HUANG_DAN: { nameId: 59, element: Elements.WATER, max: 4, color: "#FF4500", status: "人造", formula: "Pb₃O₄", toxin: 50, heatToxin: 1, descId: 48 }
+    DAN_SHA: { nameId: 49, element: Elements.FIRE,yinYang: 0, max: 2, color: "#E34234", status: "天然", formula: "HgS", toxin: 10, heatToxin: 8.5, descId: 38 },
+    ZHONG_RU_SHI: { nameId: 50, element: Elements.METAL,yinYang: 0, max: 3, color: "#FBFBE8", status: "天然", formula: "CaCO₃", toxin: 0.5, heatToxin: 1, descId: 39 },
+    SHUI_YIN: { nameId: 51, element: Elements.METAL,yinYang: 0, max: 5, color: "#E5E4E2", status: "天然", formula: "Hg", toxin: 20, heatToxin: 5, descId: 40 },
+    HUANG_JIN: { nameId: 52, element: Elements.EARTH,yinYang: 0, max: 4, color: "#FFD700", status: "天然", formula: "Au", toxin: 0.1, heatToxin: 1, descId: 41 },
+    SHI_GAO: { nameId: 53, element: Elements.METAL,yinYang: 0, max: 3, color: "#FFFFFF", status: "天然", formula: "CaSO₄·2H₂O", toxin: 0.1, heatToxin: 1, descId: 42 },
+    XIONG_HUANG: { nameId: 54, element: Elements.EARTH,yinYang: 0, max: 2, color: "#FFA500", status: "天然", formula: "As₄S₄", toxin: 15, heatToxin: 65, descId: 43 },
+    SHI_LIU_HUANG: { nameId: 55, element: Elements.EARTH,yinYang: 0, max: 3, color: "#FDFD96", status: "天然", formula: "S或 S8", toxin: 5, heatToxin: 1, descId: 44 },
+    ZENG_QING: { nameId: 56, element: Elements.WOOD,yinYang: 0, max: 2, color: "#40E0D0", status: "天然", formula: "Cu₂(OH)₂CO₃", toxin: 40, heatToxin: 1, descId: 45 },
+    TONG: { nameId: 57, element: Elements.FIRE,yinYang: 0, max: 2, color: "#B87333", status: "提煉", formula: "Cu", toxin: 5, heatToxin: 1, descId: 46 },
+    HEI_QIAN: { nameId: 58, element: Elements.WATER,yinYang: 0, max: 3, color: "#2F353B", status: "天然", formula: "Pb", toxin: 25, heatToxin: 1, descId: 47 },
+    HUANG_DAN: { nameId: 59, element: Elements.WATER,yinYang: 0, max: 4, color: "#FF4500", status: "人造", formula: "Pb₃O₄", toxin: 50, heatToxin: 1, descId: 48 }
 };
 
 // --- 4. 配方資料庫 ---
@@ -164,6 +164,7 @@ const RecipeDB = [
         targets: ["DAN_SHA", "SHUI_YIN"],
         ratio: [0.5, 0.3],
         element: Elements.FIRE, // 表格更新：金 -> 火
+        yinYang: 3,
         grindTarget: 0.6,
         descId: 8,
         effectId: 18,
@@ -174,6 +175,7 @@ const RecipeDB = [
         targets: ["ZHONG_RU_SHI", "SHI_LIU_HUANG"], // 修正拼字 SHI_RIU -> SHI_LIU
         ratio: [1.0, 0.5],
         element: Elements.METAL, // 表格更新：土 -> 金
+        yinYang: 3,
         grindTarget: 0.6,
         descId: 9,
         effectId: 19,
@@ -184,6 +186,7 @@ const RecipeDB = [
         targets: ["DAN_SHA", "ZENG_QING"], // 修正拼字 ZEN -> ZENG
         ratio: [0.1, 0.1],
         element: Elements.FIRE, // 表格更新：木 -> 火
+        yinYang: -1,
         grindTarget: 0.6,
         descId: 10,
         effectId: 20,
@@ -194,6 +197,7 @@ const RecipeDB = [
         targets: ["SHUI_YIN", "SHI_LIU_HUANG"], // 修正拼字 SHI_RIU -> SHI_LIU
         ratio: [1.0, 0.5],
         element: Elements.METAL, // 表格更新：水 -> 金
+        yinYang: 0,
         grindTarget: 0.6,
         descId: 11,
         effectId: 21,
@@ -204,6 +208,7 @@ const RecipeDB = [
         targets: ["HUANG_JIN", "SHUI_YIN"],
         ratio: [10.0, 20.0],
         element: Elements.EARTH, // 維持土
+        yinYang: 2,
         grindTarget: 0.6,
         descId: 12,
         effectId: 22,
@@ -214,6 +219,7 @@ const RecipeDB = [
         targets: ["SHI_GAO", "DAN_SHA"],
         ratio: [10.0, 0.2],
         element: Elements.METAL, // 表格更新：火 -> 金
+        yinYang: -2,
         grindTarget: 0.6,
         descId: 13,
         effectId: 23,
@@ -224,6 +230,7 @@ const RecipeDB = [
         targets: ["DAN_SHA", "XIONG_HUANG"], // 修正拼字 XUNG -> XIONG
         ratio: [0.8, 0.3],
         element: Elements.FIRE, // 表格更新：土 -> 火
+        yinYang: 2,
         grindTarget: 0.6,
         descId: 14,
         effectId: 24,
@@ -234,6 +241,7 @@ const RecipeDB = [
         targets: ["XIONG_HUANG", "DAN_SHA"], // 修正拼字 XUNG -> XIONG
         ratio: [0.5, 2.0],
         element: Elements.EARTH, // 表格更新：火 -> 土
+        yinYang: 2,
         grindTarget: 0.6,
         descId: 15,
         effectId: 25,
@@ -244,6 +252,7 @@ const RecipeDB = [
         targets: ["SHUI_YIN", "TONG"], // 修正拼字 TUNG -> TONG
         ratio: [2.0, 30.0],
         element: Elements.METAL, // 維持金
+        yinYang: -1,
         grindTarget: 0.6,
         descId: 16,
         effectId: 26,
@@ -254,6 +263,7 @@ const RecipeDB = [
         targets: ["DAN_SHA", "XIONG_HUANG"], // 修正拼字 XUNG -> XIONG
         ratio: [50.0, 0.5],
         element: Elements.ALL, // 維持全屬性
+        yinYang: 0,
         grindTarget: 0.6,
         descId: 17,
         effectId: 27,
@@ -264,10 +274,10 @@ const RecipeDB = [
 
 // --- 5. 大師研發建議語錄（修正版） ---
 const MasterAdviceDB = {
-    WRONG_MATERIAL: 
+    WRONG_MATERIAL:
         "呵，這材料嘛……算是『近親遠支』。替代得巧是本事，用得正才是底氣，還是回頭找對那味正主藥材吧。",
-    WRONG_ELEMENT: 
+    WRONG_ELEMENT:
         "五行運轉倒不甚流暢，屬性之間還在暗中角力。若能再細調五行取向，藥性會乖得多。",
-    WRONG_RATIO: 
+    WRONG_RATIO:
         "分量和研磨程度拿捏得有點放飛自我啊。再精細些，少一點豪氣，多一點算計，品質自然會再上一階。"
 };
