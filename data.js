@@ -250,7 +250,7 @@ const RecipeDB = [
     {
         nameId: 36, // 琅玕華丹
         targets: ["SHUI_YIN", "TONG"], // 修正拼字 TUNG -> TONG
-        ratio: [2.0, 30.0],
+        ratio: [50.0, 30.0],
         element: Elements.METAL, // 維持金
         yinYang: -1,
         grindTarget: 0.6,
@@ -261,7 +261,7 @@ const RecipeDB = [
     {
         nameId: 37, // 五靈丹
         targets: ["DAN_SHA", "XIONG_HUANG"], // 修正拼字 XUNG -> XIONG
-        ratio: [50.0, 0.5],
+        ratio: [1.0, 0.5],
         element: Elements.ALL, // 維持全屬性
         yinYang: 0,
         grindTarget: 0.6,
