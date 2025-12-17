@@ -1412,7 +1412,7 @@ function updateResultUI(data) {
                                 <span style="color:#888;">配方偏差</span> <span style="font-weight:bold; color:#eee;">${data.deviation}</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px dashed #444; padding-bottom:4px;">
-                                <span style="color:#888;">比例吻合度</span> <span style="font-weight:bold; color:#eee;">${data.matchRate}%</span>
+                                <span style="color:#888;">配方吻合度</span> <span style="font-weight:bold; color:#eee;">${data.matchRate}%</span>
                             </div>
                             <div style="margin-top:10px; padding:8px; background:rgba(0,0,0,0.3); border-left:3px solid ${qColor}; color:#ddd; font-style:italic; line-height:1.4;">
                                 ${data.comment}
