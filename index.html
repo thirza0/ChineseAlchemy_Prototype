@@ -58,7 +58,7 @@
                     <div style="text-align:center">
                         <h2 id="step-title">準備煉丹</h2>
                         <p id="instruction-text">請選擇第一種主要材料。</p>
-
+                        
                     </div>
                     <button id="mode-info-btn" class="mode-info-btn hidden" onclick="showModeInfoModal()">?</button>
                     <div style="flex:1"></div>
@@ -217,7 +217,7 @@
     <div id="instruction-modal" class="modal hidden">
         <div class="modal-content instruction-content">
             <div class="modal-header">
-                <h2>煉丹須知ver.16.2.12.17</h2>
+                <h2>煉丹須知ver.17.12.18</h2>
                 <span class="close-btn" onclick="closeInstructionModal()">×</span>
             </div>
 
@@ -253,33 +253,37 @@
         </div>
     </div>
     <div id="effect-modal" class="modal hidden">
-        <div class="modal-content effect-content">
-            <div class="modal-header">
-                <h2>💊 配方療效一覽</h2>
-                <span class="close-btn" onclick="toggleEffectModal()">×</span>
+    <div class="modal-content effect-content">
+        <div class="modal-header">
+            <div style="display:flex; align-items:baseline; gap:15px;">
+                <h2 style="margin:0;">💊 配方療效一覽</h2>
+                <label style="font-size:0.9rem; color:#ccc; cursor:pointer; user-select:none;">
+                    <input type="checkbox" id="show-all-recipes-check" onchange="renderEffectList()" style="vertical-align:middle; margin-right:4px;">
+                    包含未探索
+                </label>
             </div>
+            <span class="close-btn" onclick="toggleEffectModal()">×</span>
+        </div>
 
-            <div id="effect-list-container" style="padding: 20px; overflow-y: auto; flex: 1;">
-            </div>
+        <div id="effect-list-container" style="padding: 20px; overflow-y: auto; flex: 1;">
+        </div>
 
-            <div class="modal-footer">
-                <p style="color:#888; font-size:0.9rem; margin:0;">※ 僅列出已知配方</p>
-            </div>
+        <div class="modal-footer">
+            <p style="color:#888; font-size:0.9rem; margin:0;">※ 點擊配方可進行地圖導航(需要先選擇流派)</p>
         </div>
     </div>
+</div>
     <div id="mode-info-modal" class="modal hidden">
-        <div class="modal-content" style="display: flex; flex-direction: column; align-items: center;">
+        <div class="modal-content"style="display: flex; flex-direction: column; align-items: center;">
             <h2 style="padding: 20px;">當前流派規則</h2>
-            <div id="mode-info-body" class="modal-body"
-                style="padding: 20px; overflow-y: auto; flex: 1; font-size: 1.1rem; line-height: 1.8; color: #ddd;align-items: center;">
-            </div>
+            <div id="mode-info-body" class="modal-body" style="padding: 20px; overflow-y: auto; flex: 1; font-size: 1.1rem; line-height: 1.8; color: #ddd;align-items: center;"></div>
             <div class="modal-footer">
                 <button class="action-btn" onclick="closeModeInfoModal()"
                     style="min-width: 120px; font-size: 1rem;">了解</button>
             </div>
+            </div>
+            
         </div>
-
-    </div>
     </div>
     <script src="data.js"></script>
     <script src="script.js"></script>

@@ -597,7 +597,7 @@ const RecipeDB = [
     },
     {
         nameId: 92, // 磁石丹
-        targets: ["CI_SHI", "HEI_QIAN"],
+        targets: ["CI_SHI", "SHUI_YIN"],
         ratio: [3.0, 1.5],
         element: Elements.WATER,
         yinYang: -2,
@@ -608,7 +608,7 @@ const RecipeDB = [
     },
     {
         nameId: 93, // 玄鐵丹
-        targets: ["XUAN_TIE", "CI_SHI"],
+        targets: ["XUAN_TIE", "SONG_YAN"],
         ratio: [4.0, 2.0],
         element: Elements.WATER,
         yinYang: 1,
@@ -619,7 +619,7 @@ const RecipeDB = [
     },
     {
         nameId: 94, // 紫石英丹
-        targets: ["ZI_SHI_YING", "ZHONG_RU_SHI"],
+        targets: ["ZI_SHI_YING", "SONG_YAN"],
         ratio: [5.0, 2.5],
         element: Elements.FIRE,
         yinYang: 3,
@@ -630,7 +630,7 @@ const RecipeDB = [
     },
     {
         nameId: 95, // 赤石脂丹
-        targets: ["CHI_SHI_ZHI", "SHI_GAO"],
+        targets: ["CHI_SHI_ZHI", "ZENG_QING"],
         ratio: [8.0, 4.0],
         element: Elements.FIRE,
         yinYang: 1,
@@ -641,7 +641,7 @@ const RecipeDB = [
     },
     {
         nameId: 96, // 辟兵丹
-        targets: ["XIONG_HUANG", "CI_SHI"],
+        targets: ["DAN_SHA", "XIONG_HUANG"],
         ratio: [2.0, 1.0],
         element: Elements.FIRE,
         yinYang: 2,

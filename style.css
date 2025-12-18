@@ -1461,7 +1461,9 @@ input[type=range] {
     /* 預設閉合 */
 }
 
-/* 內部配方行 */
+/* style.css - 新增樣式 */
+
+/* 修改：讓配方列變成按鈕的樣子 */
 .effect-recipe-row {
     padding: 10px 15px;
     border-bottom: 1px dashed #333;
@@ -1469,6 +1471,20 @@ input[type=range] {
     justify-content: space-between;
     font-size: 0.95rem;
     color: #ccc;
+    cursor: pointer; /* ★ 變為手指游標 */
+    transition: all 0.2s; /* ★ 平滑過渡 */
+}
+
+/* ★ 新增：懸停效果 (強調它是按鈕) */
+.effect-recipe-row:hover {
+    background-color: #333;
+    color: #d4af37; /* 金色文字 */
+    padding-left: 20px; /* 微微右移 */
+}
+
+.effect-recipe-row:active {
+    background-color: #444;
+    transform: scale(0.98);
 }
 
 .effect-recipe-row:last-child {
