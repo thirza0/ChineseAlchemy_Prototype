@@ -181,8 +181,8 @@
                             配方地圖 (Scale: 10x)
                             <label
                                 style="font-size: 0.85rem; color: #aaa; cursor: pointer; user-select: none; display: flex; align-items: center;">
-                                <input type="checkbox" id="map-hint-check" onchange="toggleMapHints()"
-                                    style="margin-right: 5px;">
+                                <input type="checkbox" id="map-hint-check-debug" onchange="toggleMapHints(this.checked)"
+                                    style="margin-right: 5px;" checked>
                                 顯示未知配方
                             </label>
                             <span id="zoom-indicator" style="float:right; font-size:0.8em; color:#d4af37;">100%</span>
@@ -228,7 +228,7 @@
     <div id="instruction-modal" class="modal hidden">
         <div class="modal-content instruction-content">
             <div class="modal-header">
-                <h2>煉丹須知ver.17.2.12.18</h2>
+                <h2>煉丹須知ver.17.4.12.18</h2>
                 <span class="close-btn" onclick="closeInstructionModal()">×</span>
             </div>
 
@@ -268,9 +268,10 @@
             <div class="modal-header">
                 <div style="display:flex; align-items:baseline; gap:15px;">
                     <h2 style="margin:0;">💊 配方療效一覽</h2>
-                    <label style="font-size:0.9rem; color:#ccc; cursor:pointer; user-select:none;">
+                    <label
+                        style="font-size: 0.85rem; color: #aaa; cursor: pointer; user-select: none; display: flex; align-items: center;">
                         <input type="checkbox" id="show-all-recipes-check" onchange="renderEffectList()"
-                            style="vertical-align:middle; margin-right:4px;">
+                            style="margin-right: 5px;" checked>
                         包含未探索
                     </label>
                 </div>

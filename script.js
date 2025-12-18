@@ -95,7 +95,7 @@ let highlightTargetId = null; // 當前要強調的配方 ID
 let highlightAnimFrame = null; // 動畫 Frame ID
 let highlightPulse = 0; // 呼吸燈的相位 (0~Math.PI*2)
 // ★ 新增：控制是否在地圖上顯示未探索的配方
-let showMapHints = false;
+let showMapHints = true;
 
 // --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload
@@ -121,6 +121,8 @@ window.onload = function () {
 
     setupMapInteractions();
     updateZoomUI();
+    // ★ 新增這行：初始化時同步核取方塊狀態
+    syncMapHintUI();
 };
 // script.js - 新增函式
 
@@ -2443,15 +2445,32 @@ function initMapListeners() {
         }
     });
 }
-// script.js - 新增功能函式
+// script.js - 修改與新增功能函式
 
-// 切換地圖提示顯示狀態
-function toggleMapHints() {
-    const checkbox = document.getElementById('map-hint-check');
-    if (checkbox) {
-        showMapHints = checkbox.checked;
-        drawRecipeMap(); // 狀態改變後立即重繪
+// 切換地圖提示顯示狀態 (接收勾選狀態 state)
+function toggleMapHints(state) {
+    // 1. 如果沒傳參數(例如程式呼叫)，就切換當前狀態
+    if (state === undefined) {
+        showMapHints = !showMapHints;
+    } else {
+        showMapHints = state;
     }
+
+    // 2. 同步更新 UI (確保兩個核取方塊狀態一致)
+    syncMapHintUI();
+
+    // 3. 重繪地圖
+    drawRecipeMap(); 
+}
+
+// script.js - 修改 syncMapHintUI
+
+function syncMapHintUI() {
+    const debugCheck = document.getElementById('map-hint-check-debug');
+    // const modalCheck = document.getElementById('map-hint-check-modal'); // ← 這一行可以刪掉或註解掉
+
+    if (debugCheck) debugCheck.checked = showMapHints;
+    // if (modalCheck) modalCheck.checked = showMapHints; // ← 這一行可以刪掉或註解掉
 }
 // script.js - 新增結算動畫函式
 
