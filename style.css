@@ -45,7 +45,7 @@ body {
 #status-bar {
     display: grid;
     width: 100%;
-    justify-items: center;
+    justify-items: right;
     align-items: center;
     padding-bottom: 15px;
     margin-bottom: 15px;
@@ -1091,8 +1091,8 @@ input[type=range] {
 /* 底部操作區 */
 .modal-footer {
     padding: 15px;
-    border-top: 1px solid #444;
-    background-color: #252530;
+    /* border-top: 1px solid #444; */
+    /*background-color: #252530;*/
     text-align: center;
     flex-shrink: 0;
 }
@@ -1473,4 +1473,51 @@ input[type=range] {
 
 .effect-recipe-row:last-child {
     border-bottom: none;
+}
+
+/* style.css - 新增樣式區塊 */
+
+/* 1. 標題列容器：讓 h1 靠左，button 靠右 */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: right;
+    width: 100%;
+    margin-bottom: 15px; /* 與下方內容保持距離 */
+    position: relative;
+}
+
+/* 2. 修正 h1 樣式：移除預設 margin 避免排版跑掉 */
+.panel-header h1 {
+    margin: 0;
+    font-size: 1.5rem; /* 依您原本的大小調整 */
+}
+
+/* 3. 問號按鈕樣式 */
+.mode-info-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: #333;
+    color: #d4af37;
+    border: 1px solid #d4af37;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0; /* 防止被擠壓 */
+}
+
+.mode-info-btn:hover {
+    background-color: #d4af37;
+    color: #000;
+    transform: scale(1.1);
+}
+
+/* 4. 確保 hidden 有效 */
+.hidden {
+    display: none !important;
 }

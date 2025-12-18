@@ -19,6 +19,37 @@ const ElementColors = {
     "全": "#b700ffff"  // ✨ 新增這行，全屬性用白色或彩虹色代表
 };
 
+// data.js - 請新增此區塊
+
+const ModeRuleDB = {
+    NEUTRAL: `
+        <h3>🛡️ 中和流 (Neutral)</h3>
+        <p>在此流派中，<strong>土屬性</strong>的物理特性表現為<strong>惰性</strong>。</p>
+        <ul style="text-align: left; margin-top: 10px; list-style-type: disc; padding-left: 20px;">
+            <li><strong>座標影響：</strong>土屬性材料的向量座標固定為 <code>(0, 0)</code>。</li>
+            <li><strong>策略用途：</strong>主要用於增加總重量而不改變向量方向，可用來「稀釋」過強的藥性，或在不移動座標的情況下滿足重量需求。</li>
+        </ul>
+    `,
+    EXTEND: `
+        <h3>🚀 延伸流 (Extend)</h3>
+        <p>在此流派中，<strong>土屬性</strong>具有<strong>模仿與增幅</strong>的特性。</p>
+        <ul style="text-align: left; margin-top: 10px; list-style-type: disc; padding-left: 20px;">
+            <li><strong>座標影響：</strong>土屬性會複製另一種投入材料的方向。</li>
+            <li><strong>範例：</strong>若搭配<strong>火 (Y軸)</strong>，土屬性也會產生 <strong>Y軸</strong> 的推力。</li>
+            <li><strong>策略用途：</strong>用於大幅增強單一方向的藥效，適合追求極端座標的配方。</li>
+        </ul>
+    `,
+    BIAS: `
+        <h3>☯️ 偏性流 (Bias)</h3>
+        <p>在此流派中，<strong>土屬性</strong>具有<strong>互補與平衡</strong>的特性。</p>
+        <ul style="text-align: left; margin-top: 10px; list-style-type: disc; padding-left: 20px;">
+            <li><strong>座標影響：</strong>土屬性會自動補足另一種材料「缺失」的軸向。</li>
+            <li><strong>範例：</strong>若另一材料為<strong>火 (垂直向)</strong>，土屬性會轉為 <strong>水平向</strong> 推力。</li>
+            <li><strong>策略用途：</strong>用於填補向量空缺，適合需要斜向座標或複雜平衡的配方。</li>
+        </ul>
+    `
+};
+
 // --- 2. 文案資料庫 (TextDB) ---
 // 來源：TextID / TextContent 對照表（最終版）
 const TextDB = {
@@ -110,19 +141,27 @@ const TextDB = {
             </li>
             <li>
                 <span class="rule-num">02</span>
-                <div class="rule-text">相剋法則：若丹藥五行<span class="warn">剋制</span>病患，<span class="warn">毒素將加倍</span>。</div>
+                <div class="rule-text">每個病患對<span class="warn">毒素</span>承受力不同，請謹慎控制劑量與屬性。</div>
             </li>
             <li>
                 <span class="rule-num">03</span>
-                <div class="rule-text">相生法則：若丹藥五行<span class="good">生助</span>病患，<span class="good">療效將加倍</span>。</div>
+                <div class="rule-text">相剋法則：若丹藥五行<span class="warn">剋制</span>病患，<span class="warn">毒素將加倍</span>。</div>
             </li>
             <li>
                 <span class="rule-num">04</span>
-                <div class="rule-text">配方奧義：不同的<span class="highlight">「材料組合」</span>與<span class="highlight">「重量比例」</span>將解鎖不同古方。</div>
+                <div class="rule-text">相生法則：若丹藥五行<span class="good">生助</span>病患，<span class="good">療效將加倍</span>。</div>
             </li>
             <li>
                 <span class="rule-num">05</span>
-                <div class="rule-text">每個病患對<span class="warn">毒素</span>承受力不同，請謹慎控制劑量與屬性。</div>
+                <div class="rule-text">配方奧義：不同的<span class="highlight">「材料組合」</span>與<span class="highlight">「重量比例」</span>將解鎖不同古方。</div>
+            </li>
+            <li>
+                <span class="rule-num">06</span>
+                <div class="rule-text">配方地圖：無從下手的時候可以<span class="highlight">「參考配方地圖上配方的座標」</span>，試著結果更接近該座標吧!</div>
+            </li>
+            <li>
+                <span class="rule-num">07</span>
+                <div class="rule-text">土屬性：不同流派<span class="highlight">使用土的方式不同</span>，詳情請見右上角按鈕查看。(該按鈕會於選擇流派後出現)</div>
             </li>
         </ul>
         <div class="rule-note">
@@ -319,7 +358,7 @@ const MaterialDB = {
         toxin: 3, heatToxin: 1, descId: 82
     },
     CHI_SHI_ZHI: {
-        nameId: 74, element: Elements.EARTH, yinYang: 0, max: 1,
+        nameId: 74, element: Elements.FIRE, yinYang: 0, max: 1,
         color: "#9C3A2B", status: "天然", formula: "",
         toxin: 0.5, heatToxin: 1, descId: 83
     },

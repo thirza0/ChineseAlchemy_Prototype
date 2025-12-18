@@ -207,7 +207,10 @@ function showGameModeSelection() {
     const instruct = document.getElementById('instruction-text');
     const grid = document.getElementById('material-grid');
 
-    // ★★★ [新增] 確保初始化時地圖是乾淨的 ★★★
+    // ★ 修改點：回到流派選擇時，加上 hidden class 隱藏按鈕
+    const infoBtn = document.getElementById('mode-info-btn');
+    if (infoBtn) infoBtn.classList.add('hidden');
+
     clearGameState();
 
     title.textContent = "煉丹流派選擇";
@@ -218,6 +221,7 @@ function showGameModeSelection() {
     grid.className = "mode-selection-container";
     grid.innerHTML = "";
 
+    // 定義建立按鈕的函式 (記得宣告 const btn)
     const createModeBtn = (name, desc, color, modeKey) => {
         const btn = document.createElement('div');
         btn.className = "mat-btn mode-btn";
@@ -243,10 +247,15 @@ function showGameModeSelection() {
 function startGame() {
     console.log("[系統] 遊戲開始，初始化...");
     const grid = document.getElementById('material-grid');
-    grid.className = "";
-    grid.style = "";
+    if (grid) {
+        grid.className = "";
+        grid.style = "";
+    }
 
-    // ★★★ [關鍵修正] 開始遊戲時，一定要重新載入該流派的歷史狀態 ★★★
+    // ★ 修改點：遊戲開始後，移除 hidden class 顯示按鈕
+    const infoBtn = document.getElementById('mode-info-btn');
+    if (infoBtn) infoBtn.classList.remove('hidden');
+
     refreshGameStateFromHistory();
     clearGameState();
 
@@ -2047,6 +2056,23 @@ function renderEffectList() {
         container.appendChild(div);
     }
 }
+// --- 新增：流派說明視窗控制邏輯 ---
+
+window.showModeInfoModal = function() {
+    const modal = document.getElementById('mode-info-modal');
+    const body = document.getElementById('mode-info-body');
+    
+    // 從 ModeRuleDB 取得對應文案，若無則顯示預設文字
+    const content = ModeRuleDB[earthMode] || "<p>尚未選擇流派</p>";
+    
+    if (body) body.innerHTML = content;
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeModeInfoModal = function() {
+    const modal = document.getElementById('mode-info-modal');
+    if (modal) modal.classList.add('hidden');
+};
 // 修改：使用共用的清除邏輯
 function resetGame() {
     console.log("[系統] 重置遊戲 (重新煉製)...");

@@ -58,7 +58,9 @@
                     <div style="text-align:center">
                         <h2 id="step-title">準備煉丹</h2>
                         <p id="instruction-text">請選擇第一種主要材料。</p>
+
                     </div>
+                    <button id="mode-info-btn" class="mode-info-btn hidden" onclick="showModeInfoModal()">?</button>
                     <div style="flex:1"></div>
                 </div>
 
@@ -136,7 +138,7 @@
                                     <span>五行屬性：</span><strong id="final-element">-</strong>
                                 </div>
                                 <div
-                                    style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px dashed #444; padding-bottom:4px;">                                    
+                                    style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px dashed #444; padding-bottom:4px;">
                                     <span style="color:#888;">陰陽</span>
                                     <span style="font-weight:bold; color:#eee;">${data.yinYang}</span>
                                 </div>
@@ -264,6 +266,20 @@
                 <p style="color:#888; font-size:0.9rem; margin:0;">※ 僅列出已知配方</p>
             </div>
         </div>
+    </div>
+    <div id="mode-info-modal" class="modal hidden">
+        <div class="modal-content" style="display: flex; flex-direction: column; align-items: center;">
+            <h2 style="padding: 20px;">當前流派規則</h2>
+            <div id="mode-info-body" class="modal-body"
+                style="padding: 20px; overflow-y: auto; flex: 1; font-size: 1.1rem; line-height: 1.8; color: #ddd;align-items: center;">
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn" onclick="closeModeInfoModal()"
+                    style="min-width: 120px; font-size: 1rem;">了解</button>
+            </div>
+        </div>
+
+    </div>
     </div>
     <script src="data.js"></script>
     <script src="script.js"></script>
