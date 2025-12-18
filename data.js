@@ -653,7 +653,7 @@ const RecipeDB = [
     {
         nameId: 97, // 空青黑鉛丹
         targets: ["KONG_QING", "HEI_QIAN"],
-        ratio: [1.5, 3.0],
+        ratio: [3.0, 1.5],
         element: Elements.WOOD,
         yinYang: -3,
         grindTarget: 0.6,

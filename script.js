@@ -43,7 +43,12 @@ let isFireComplete = false;
 const FIRE_DECAY_PER_SEC = 0.2;
 let auxiliaryProgress = 0;
 const AUXILIARY_MAX = 3;
+// ★★★ 修改建議：將常數改為可調整的變數 ★★★
+// 原本是 const BASE_DISTANCE_COEF = 0.5;
+// 改成下面這樣：
 
+let BASE_RATIO = 0.5;   // 基礎佔比 (原本的 0.5)
+let GRIND_RATIO = 0.5;  // 研磨佔比 (原本是 1 - 0.5 算出來的)
 
 // 地圖控制 (保留原樣)
 let mapHitZones = [];
@@ -56,6 +61,10 @@ let lastMouseY = 0;
 // ★ 新增：用於記錄地圖滑鼠位置 (解決呼吸燈導致 Tooltip 消失的問題)
 let mapMouseX = null;
 let mapMouseY = null;
+
+// --- 結算動畫變數 ---
+let settlementAnimPos = null; // 動畫當前的座標 {x, y}
+let isAnimatingSettlement = false; // 是否正在播放結算動畫
 
 // ★★★ [修正] 新增 Data 變數來儲存完整的 UI 資訊 (評語、建議等) ★★★
 let lastPlayerResult = null;         // 僅存座標 (給地圖用)
@@ -246,7 +255,7 @@ function showGameModeSelection() {
             <div class="mode-name">${name}</div>
             <div class="mode-desc">${desc}</div>
         `;
-        
+
         btn.onclick = () => {
             earthMode = modeKey;
             currentHistoryTab = modeKey;
@@ -289,10 +298,10 @@ function startGame() {
 
     initMaterialGrid();
     calculateAllRecipeCoordinates();
-    
+
     // 確保地圖重繪一次以正確顯示
     drawRecipeMap();
-    
+
     setStep(0);
 }
 
@@ -397,7 +406,8 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
 
     if (grindRate === undefined) grindRate = 0;
 
-    let effectiveRate = BASE_DISTANCE_COEF + ((1 - BASE_DISTANCE_COEF) * grindRate);
+    // 修改後 (讓研磨佔比獨立出來)
+    let effectiveRate = BASE_RATIO + (GRIND_RATIO * grindRate);
 
     let rawMag1 = m1.max * effectiveRate * (w1 / totalW);
     let rawMag2 = m2.max * effectiveRate * (w2 / totalW);
@@ -412,6 +422,71 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
     let finalY = Math.round(vecY * 100) / 100;
 
     return { x: finalX, y: finalY };
+}
+
+// script.js - 新增函式
+
+// script.js - 修改 calculateCurrentPreviewData
+
+function calculateCurrentPreviewData() {
+    // 如果已經結算(步驟5)，就不顯示預覽箭頭
+    if (currentStep === 5) return null;
+
+    let m1 = null, w1 = 0;
+    let m2 = null, w2 = 0;
+
+    // ★★★ 修改：預設研磨係數改為 0.0 ★★★
+    // 公式：Effective = 0.5 + (0.5 * grind)
+    // Grind=0 -> Effective=0.5 (實線佔一半，虛線延伸另一半)
+    let previewGrind = 0.0;
+
+    // --- 情境 A：正在選擇或秤重第一種材料 ---
+    if (currentStep <= 1 && selectedMatID) {
+        m1 = MaterialDB[selectedMatID];
+        w1 = currentWeight > 0 ? currentWeight : 0.1;
+        m2 = null;
+        w2 = 0;
+    }
+    // --- 情境 B：正在選擇或秤重第二種材料 ---
+    else if (currentStep >= 2 && currentStep <= 3 && potMaterials.length > 0 && selectedMatID) {
+        let pm = potMaterials[0];
+        m1 = MaterialDB[pm.id];
+        w1 = pm.weight;
+        m2 = MaterialDB[selectedMatID];
+        w2 = currentWeight;
+    }
+    // --- 情境 C：煉製儀式中 - 研磨階段 ---
+    else if (currentStep === 4 && potMaterials.length >= 2) {
+        let pm1 = potMaterials[0];
+        let pm2 = potMaterials[1];
+        m1 = MaterialDB[pm1.id];
+        w1 = pm1.weight;
+        m2 = MaterialDB[pm2.id];
+        w2 = pm2.weight;
+
+        if (ritualStepIndex === 0) {
+            previewGrind = grindProgress / 100;
+        } else {
+            previewGrind = grindCoefficient > 0 ? grindCoefficient : 0.0;
+        }
+    }
+    else {
+        return null;
+    }
+
+    if (!m1) return null;
+    if (!m2) { m2 = m1; w2 = 0; }
+
+    // 1. 理論最大值 (虛線尖端)：假設研磨係數 1.0
+    let maxRes = calculateCoordinate(m1, w1, m2, w2, 1.0);
+
+    // 2. 當前有效值 (實線尖端)：依照當前研磨度
+    let curRes = calculateCoordinate(m1, w1, m2, w2, previewGrind);
+
+    return {
+        max: maxRes,
+        cur: curRes
+    };
 }
 
 function calculateAllRecipeCoordinates() {
@@ -545,7 +620,7 @@ function updateZoomUI() {
     }
 }
 
-// script.js - 更新 drawRecipeMap (支援半透明提示)
+// script.js - 修改 drawRecipeMap
 
 function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     const canvas = document.getElementById('recipe-map');
@@ -554,7 +629,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
 
     const w = canvas.width;
     const h = canvas.height;
-    
+
     // 1. 清空畫布
     ctx.clearRect(0, 0, w, h);
 
@@ -565,13 +640,14 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     const viewRadiusUnits = 10.0 / mapZoom;
     const canvasRadiusPx = w / 2;
     const pixelsPerUnit = canvasRadiusPx / viewRadiusUnits;
+    let currentIconRadius = ICON_BASE_RADIUS + (mapZoom - 1) * ICON_ZOOM_SCALE;
 
     // --- 2. 背景與象限色 (保持不變) ---
     const far = w * 5;
-    ctx.fillStyle = "#E0F7FA"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - far, cy - far); ctx.lineTo(cx + far, cy - far); ctx.closePath(); ctx.fill(); 
-    ctx.fillStyle = "#F1F8E9"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + far, cy - far); ctx.lineTo(cx + far, cy + far); ctx.closePath(); ctx.fill(); 
-    ctx.fillStyle = "#FBE9E7"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + far, cy + far); ctx.lineTo(cx - far, cy + far); ctx.closePath(); ctx.fill(); 
-    ctx.fillStyle = "#ECEFF1"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - far, cy + far); ctx.lineTo(cx - far, cy - far); ctx.closePath(); ctx.fill(); 
+    ctx.fillStyle = "#E0F7FA"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - far, cy - far); ctx.lineTo(cx + far, cy - far); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#F1F8E9"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + far, cy - far); ctx.lineTo(cx + far, cy + far); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#FBE9E7"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + far, cy + far); ctx.lineTo(cx - far, cy + far); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ECEFF1"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - far, cy + far); ctx.lineTo(cx - far, cy - far); ctx.closePath(); ctx.fill();
 
     // --- 3. 浮水印 (保持不變) ---
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -590,7 +666,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     ctx.font = `bold ${labelFontSize}px Consolas`;
     ctx.lineWidth = 1;
 
-    // X Grid
+    // X/Y Grid
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     const startX = Math.floor((0 - cx) / subGridStepPx);
     const endX = Math.ceil((w - cx) / subGridStepPx);
@@ -602,7 +678,6 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
         if (isMajor) { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillText(Math.round(val).toString(), x, cy + 4); }
     }
-    // Y Grid
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     const startY = Math.floor((0 - cy) / subGridStepPx);
     const endY = Math.ceil((h - cy) / subGridStepPx);
@@ -622,12 +697,10 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     ctx.strokeStyle = "#FF4500"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, h); ctx.stroke();
     ctx.strokeStyle = "#607D8B"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(0, cy); ctx.stroke();
 
-    // --- 5. 繪製配方點 ---
+    // --- 5. 繪製配方點 (保持不變) ---
     ctx.font = `bold ${10 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
-    mapHitZones = []; 
-
+    mapHitZones = [];
     let hoveredRecipe = null;
-    let currentIconRadius = ICON_BASE_RADIUS + (mapZoom - 1) * ICON_ZOOM_SCALE;
 
     RecipeDB.forEach(r => {
         const drawX = cx + (r.targetX * pixelsPerUnit);
@@ -637,103 +710,72 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
         if (drawX < -50 || drawX > w + 50 || drawY < -50 || drawY > h + 50) return;
 
         const isDiscovered = (typeof isRecipeDiscovered === 'function') ? isRecipeDiscovered(r.nameId) : false;
-        
-        // ★★★ 關鍵修改：顯示條件放寬 ★★★
-        // 原本: !isDiscovered && highlightTargetId !== r.nameId -> return
-        // 現在: 如果 showMapHints 為 true，就不 return，而是繼續往下畫
-        if (!isDiscovered && highlightTargetId !== r.nameId && !showMapHints) {
-            return; 
-        }
 
-        // 記錄感應區
+        if (!isDiscovered && highlightTargetId !== r.nameId && !showMapHints) return;
+
         mapHitZones.push({ x: drawX, y: drawY, r: currentIconRadius * 1.5, name: rName, tx: r.targetX, ty: r.targetY });
 
-        // --- 呼吸燈邏輯 ---
+        // 呼吸燈
         if (highlightTargetId === r.nameId) {
             const pulseRadius = currentIconRadius * 1.5 + Math.sin(highlightPulse) * 5;
             const alpha = 0.5 + Math.sin(highlightPulse) * 0.3;
             ctx.save();
-            ctx.beginPath();
-            ctx.arc(drawX, drawY, pulseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(drawX, drawY, pulseRadius + 5, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 215, 0, ${alpha * 0.5})`;
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(drawX, drawY, pulseRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`; ctx.fill();
+            ctx.beginPath(); ctx.arc(drawX, drawY, pulseRadius + 5, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 215, 0, ${alpha * 0.5})`; ctx.lineWidth = 2; ctx.stroke();
             ctx.restore();
         }
 
-        // --- 繪製本體 ---
-        
-        // ★★★ 關鍵修改：如果是提示點 (未發現 且 非導航目標)，設定半透明 ★★★
-        const isHint = (!isDiscovered && highlightTargetId !== r.nameId);
-        if (isHint) {
-            ctx.save(); // 保存當前狀態
-            ctx.globalAlpha = 0.6; // 設定半透明
-        }
-
-        // 懸停判斷
+        // 懸停判定
         let isHover = false;
         if (hoverX !== null && hoverY !== null) {
-            let dx = hoverX - drawX;
-            let dy = hoverY - drawY;
+            let dx = hoverX - drawX; let dy = hoverY - drawY;
             if (dx * dx + dy * dy <= Math.pow(currentIconRadius * 1.8, 2)) {
-                hoveredRecipe = { 
-                    name: rName, x: drawX, y: drawY, tx: r.targetX, ty: r.targetY, isDiscovered: isDiscovered 
-                };
+                hoveredRecipe = { name: rName, x: drawX, y: drawY, tx: r.targetX, ty: r.targetY, isDiscovered: isDiscovered };
                 isHover = true;
             }
         }
 
-        // 決定顏色 (未發現的一律用深灰鎖頭色)
+        // 配方點繪製
+        const isHint = (!isDiscovered && highlightTargetId !== r.nameId);
+        if (isHint) { ctx.save(); ctx.globalAlpha = 0.6; }
+
         let baseColor = isDiscovered ? "#d4af37" : "#555555";
         let borderColor = isDiscovered ? "#777777" : "#d4af37";
         const isTargetHover = (hoveredRecipe && hoveredRecipe.name === rName);
-        
+
         ctx.fillStyle = isTargetHover ? "#fff" : baseColor;
-        ctx.beginPath();
-        ctx.arc(drawX, drawY, currentIconRadius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(drawX, drawY, currentIconRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = borderColor; ctx.lineWidth = isTargetHover ? 2 : 1.5; ctx.stroke();
 
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = isTargetHover ? 2 : 1.5;
-        ctx.stroke();
-
-        // 繪製文字或鎖頭
-        ctx.textBaseline = "middle";
-        ctx.textAlign = "center";
-        
+        ctx.textBaseline = "middle"; ctx.textAlign = "center";
         if (isDiscovered) {
             const char = rName.length > 1 ? rName[1] : rName[0];
-            ctx.fillStyle = isTargetHover ? "#000" : "#fff"; 
-            if (highlightTargetId === r.nameId) ctx.font = `bold ${12 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
-            else ctx.font = `bold ${10 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
+            ctx.fillStyle = isTargetHover ? "#000" : "#fff";
+            ctx.font = `bold ${highlightTargetId === r.nameId ? 12 + (mapZoom - 1) * 2 : 10 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
             ctx.fillText(char, drawX, drawY + (mapZoom > 2 ? 1 : 1));
         } else {
-            ctx.fillStyle = "#fff";
-            ctx.font = `${8 + (mapZoom - 1) * 2}px Arial`; 
+            ctx.fillStyle = "#fff"; ctx.font = `${8 + (mapZoom - 1) * 2}px Arial`;
             ctx.fillText("🔒", drawX, drawY + (mapZoom > 2 ? 1 : 1));
         }
-
-        // ★★★ 關鍵修改：如果是提示點，恢復透明度 ★★★
-        if (isHint) {
-            ctx.restore(); // 恢復 globalAlpha = 1
-        }
+        if (isHint) { ctx.restore(); }
     });
 
-    // --- 6. 玩家結果連線 (保持不變) ---
+    // --- 6. 玩家結果連線與 Icon ---
     const resultToShow = isShowingPreviousResult ? previousPlayerResult : lastPlayerResult;
 
     if (resultToShow) {
         const pDrawX = cx + (resultToShow.x * pixelsPerUnit);
         const pDrawY = cy - (resultToShow.y * pixelsPerUnit);
 
+        // 畫實線 (原點 -> 結果)
+        // ★ 如果正在動畫中，線條也畫出來，讓 Icon 沿著線跑，效果比較好
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(pDrawX, pDrawY);
         ctx.strokeStyle = isShowingPreviousResult ? "rgba(50, 50, 50, 0.4)" : "rgba(50, 50, 50, 0.8)";
         ctx.lineWidth = 2; ctx.setLineDash([]); ctx.stroke();
 
+        // 畫虛線 (目標引導)
         if (resultToShow.tx !== null && resultToShow.ty !== null) {
             const tDrawX = cx + (resultToShow.tx * pixelsPerUnit);
             const tDrawY = cy - (resultToShow.ty * pixelsPerUnit);
@@ -742,39 +784,138 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
             ctx.lineWidth = 2; ctx.setLineDash([10, 5]); ctx.stroke(); ctx.setLineDash([]);
         }
 
-        if (pDrawX >= -50 && pDrawX <= w + 50 && pDrawY >= -50 && pDrawY <= h + 50) {
+        // ★★★ 修改：根據動畫狀態決定 Icon 位置 ★★★
+        let iconX, iconY;
+
+        if (isAnimatingSettlement && settlementAnimPos && !isShowingPreviousResult) {
+            // 動畫模式：Icon 在移動中
+            iconX = cx + (settlementAnimPos.x * pixelsPerUnit);
+            iconY = cy - (settlementAnimPos.y * pixelsPerUnit);
+        } else {
+            // 靜態模式：Icon 在終點
+            iconX = pDrawX;
+            iconY = pDrawY;
+        }
+
+        // 檢查邊界與懸停
+        if (iconX >= -50 && iconX <= w + 50 && iconY >= -50 && iconY <= h + 50) {
             if (hoverX === null) {
-                mapHitZones.push({x: pDrawX, y: pDrawY, r: currentIconRadius * 1.5, name: resultToShow.name, tx: resultToShow.x, ty: resultToShow.y});
+                mapHitZones.push({ x: iconX, y: iconY, r: currentIconRadius * 1.5, name: resultToShow.name, tx: resultToShow.x, ty: resultToShow.y });
             }
             if (hoverX !== null && hoverY !== null) {
-                let dx = hoverX - pDrawX; let dy = hoverY - pDrawY;
+                let dx = hoverX - iconX; let dy = hoverY - iconY;
                 if (dx * dx + dy * dy <= Math.pow(currentIconRadius * 1.5, 2)) {
                     hoveredRecipe = {
-                        name: resultToShow.name, x: pDrawX, y: pDrawY, tx: resultToShow.x, ty: resultToShow.y, isDiscovered: true 
+                        name: resultToShow.name, x: iconX, y: iconY, tx: resultToShow.x, ty: resultToShow.y, isDiscovered: true
                     };
                 }
             }
-            ctx.fillStyle = isShowingPreviousResult ? "#dddddd" : "#ffffff";
-            ctx.beginPath(); ctx.arc(pDrawX, pDrawY, currentIconRadius, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
-            ctx.fillStyle = "#000000"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
-            ctx.font = `bold ${10 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
+
+            // 使用共用函式畫 Icon
+            // 舊結果用灰色，新結果(含動畫中)用金色
+            const isGold = !isShowingPreviousResult;
             const iconText = isShowingPreviousResult ? "舊" : "丹";
-            ctx.fillText(iconText, pDrawX, pDrawY + (mapZoom > 2 ? 1 : 1));
+            drawDanIcon(ctx, iconX, iconY, currentIconRadius, iconText, isGold);
         }
     }
 
-    // --- 7. Tooltip ---
+    // --- 7. 即時預覽箭頭 (製作過程中) ---
+    // ★★★ 修改：Icon 移到原點，畫出箭頭 ★★★
+    const preview = calculateCurrentPreviewData();
+    if (preview) {
+        const maxDrawX = cx + (preview.max.x * pixelsPerUnit);
+        const maxDrawY = cy - (preview.max.y * pixelsPerUnit);
+        const curDrawX = cx + (preview.cur.x * pixelsPerUnit);
+        const curDrawY = cy - (preview.cur.y * pixelsPerUnit);
+
+        // 1. 畫虛線箭頭 (最大潛力)
+        drawArrow(ctx, cx, cy, maxDrawX, maxDrawY, "rgba(212, 175, 55, 0.6)", true);
+
+        // 2. 畫實線箭頭 (當前有效)
+        drawArrow(ctx, cx, cy, curDrawX, curDrawY, "#888", false);
+
+        // 3. 畫 Icon (在原點！)
+        // 樣式改為統一的「丹」字風格
+        drawDanIcon(ctx, cx, cy, currentIconRadius, "丹", true); // 半徑小一點點區分，但風格一致
+        //drawDanIcon(ctx, iconX, iconY, currentIconRadius, iconText, isGold)
+    }
+
+    // --- 8. Tooltip ---
     if (hoveredRecipe) {
         const prefix = hoveredRecipe.isDiscovered === false ? "🔒 " : "";
         const text = `${prefix}${hoveredRecipe.name} [${hoveredRecipe.tx.toFixed(2)}, ${hoveredRecipe.ty.toFixed(2)}]`;
         drawTooltip(ctx, text, hoveredRecipe.x, hoveredRecipe.y, w, h);
     }
 }
+
+// script.js - 新增輔助繪圖函式
+
+// 畫箭頭
+function drawArrow(ctx, fromX, fromY, toX, toY, color, isDashed) {
+    const headlen = 8; // 箭頭大小
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const angle = Math.atan2(dy, dx);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // 如果距離太短，就不畫，避免圖形混亂
+    if (dist < 2) return;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+    if (isDashed) ctx.setLineDash([5, 5]);
+    else ctx.setLineDash([]);
+
+    // 畫線
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.stroke();
+
+    // 畫箭頭 (箭頭永遠是實心)
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.lineTo(toX, toY);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+// 畫統一風格的丹藥 Icon
+function drawDanIcon(ctx, x, y, radius, text, isGold = true) {
+    ctx.save();
+
+    // 底色
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 邊框
+    ctx.strokeStyle = isGold ? "#d4af37" : "#888";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 文字
+    ctx.fillStyle = isGold ? "#d4af37" : "#888";
+    // 根據半徑動態調整字體大小
+    const fontSize = Math.max(10, Math.floor(radius * 1.2));
+    ctx.font = `bold ${fontSize}px 'Microsoft JhengHei'`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, x, y + (fontSize * 0.1)); // 微調垂直位置
+
+    ctx.restore();
+}
 // 輔助：判斷配方是否已發現 (檢查歷史紀錄與背包)
 function isRecipeDiscovered(nameId) {
     // 1. 檢查背包
-    const inInventory = inventoryStorage.some(item => 
+    const inInventory = inventoryStorage.some(item =>
         TextDB[item.nameId] === TextDB[nameId] // 比對名稱，或直接比對 item.id === nameId (視資料結構而定)
     );
     if (inInventory) return true;
@@ -783,18 +924,18 @@ function isRecipeDiscovered(nameId) {
     for (const key in historyStorage) {
         const list = historyStorage[key];
         const inHistory = list.some(item => {
-             // 歷史紀錄的 name 是字串，RecipeDB 的 nameId 是數字，需透過 TextDB 轉換比對
-             return item.name === TextDB[nameId];
+            // 歷史紀錄的 name 是字串，RecipeDB 的 nameId 是數字，需透過 TextDB 轉換比對
+            return item.name === TextDB[nameId];
         });
         if (inHistory) return true;
     }
-    
+
     return false;
 }
 // script.js - 請新增此函式
 
 // 用於切換療效列表的展開/收合
-window.toggleEffectItem = function(headerElement) {
+window.toggleEffectItem = function (headerElement) {
     // headerElement 是被點擊的 .effect-summary
     // 它的下一個兄弟元素就是 .effect-details (內容區)
     const details = headerElement.nextElementSibling;
@@ -881,6 +1022,8 @@ function initMaterialGrid() {
     }
 }
 
+// script.js - selectMaterial
+
 function selectMaterial(id) {
     selectedMatID = id;
     currentWeight = 0.0;
@@ -893,6 +1036,9 @@ function selectMaterial(id) {
 
     if (currentStep === 0) setStep(1);
     else if (currentStep === 2) setStep(3);
+
+    // ★ 新增：選擇材料後，立即更新地圖預覽
+    drawRecipeMap();
 }
 
 function prepareWeighingPanel() {
@@ -915,11 +1061,16 @@ function prepareWeighingPanel() {
     updateWeightUI();
 }
 
+// script.js - adjustWeight
+
 function adjustWeight(amount) {
     currentWeight += amount;
     if (currentWeight < 0) currentWeight = 0;
     currentWeight = Math.round(currentWeight * 10) / 10;
     updateWeightUI();
+
+    // ★ 新增：重量改變，更新地圖箭頭
+    drawRecipeMap();
 }
 
 function updateWeightUI() {
@@ -928,11 +1079,16 @@ function updateWeightUI() {
     if (slider) slider.value = currentWeight * 10;
 }
 
+// script.js - Slider Event Listener
+
 const slider = document.getElementById('weight-slider');
 if (slider) {
     slider.addEventListener('input', (e) => {
         currentWeight = e.target.value / 10;
         document.getElementById('weight-display').textContent = currentWeight.toFixed(1) + " g";
+
+        // ★ 新增：滑動時即時重繪地圖 (實現絲滑的動態箭頭)
+        drawRecipeMap();
     });
 }
 
@@ -1106,6 +1262,8 @@ function handleWaitStep(btn) {
     }, 1000);
 }
 
+// script.js - setupGrindEvents
+
 function setupGrindEvents(btn) {
     const progressBar = document.getElementById('grind-progress-fill');
 
@@ -1119,6 +1277,9 @@ function setupGrindEvents(btn) {
                 grindProgress += 2;
                 if (grindProgress > 100) grindProgress = 100;
                 if (progressBar) progressBar.style.width = grindProgress + "%";
+
+                // ★ 新增：研磨進度改變，重繪地圖 (實線箭頭會變長)
+                drawRecipeMap();
             }
         }, 100);
     };
@@ -1223,34 +1384,77 @@ function advanceRitualStep() {
     else { updateRitualBtn(); }
 }
 
+// script.js - 修改 runResultSequence (協調動畫與文字同步)
+
 async function runResultSequence() {
     const processText = document.getElementById('process-text');
     const finalContainer = document.getElementById('final-result-container');
     const restartBtn = document.getElementById('restart-btn');
 
+    // 1. 初始化 UI 狀態
     if (finalContainer) finalContainer.classList.add('hidden');
-    if (restartBtn) restartBtn.classList.add('hidden');
+    if (restartBtn) restartBtn.classList.add('hidden'); // 先隱藏重新按鈕
+    
+    // 2. ★ 關鍵：先執行計算，取得終點座標 (但不顯示 UI)
+    const resultData = await calculateFinalResult();
+    
+    if (!resultData) {
+        console.error("結算失敗");
+        return;
+    }
 
+    // 3. 設定文字序列
+    const messages = ["小心翼翼熄滅火苗...", "用夾子打開丹爐蓋子...", "丹爐中飄出奇特的味道..."];
+    const stepDuration = 1500; // 每段文字顯示 1.5 秒
+    const totalDuration = messages.length * stepDuration; // 總時間 4.5 秒
+
+    // 4. ★ 關鍵：同時啟動「地圖動畫」與「文字輪播」
+    // 我們使用 Promise.all 讓它們並行執行
+    
     if (processText) {
         processText.classList.remove('hidden');
         processText.className = "";
-        const messages = ["小心翼翼熄滅火苗...", "用夾子打開丹爐蓋子...", "丹爐中飄出奇特的味道..."];
-        for (let msg of messages) {
-            processText.textContent = msg;
-            await new Promise(r => setTimeout(r, 1500));
-        }
-        processText.classList.add('hidden');
     }
-    calculateFinalResult();
+
+    const animationTask = animateSettlement(resultData.playerRes.x, resultData.playerRes.y, totalDuration);
+    
+    const textTask = (async () => {
+        for (let msg of messages) {
+            if (processText) processText.textContent = msg;
+            await new Promise(r => setTimeout(r, stepDuration));
+        }
+    })();
+
+    // 等待兩者都完成 (理論上時間是一樣的)
+    await Promise.all([animationTask, textTask]);
+
+    // 5. 動畫結束，顯示結果介面
+    if (processText) processText.classList.add('hidden');
+    
+    if (finalContainer) {
+        finalContainer.classList.remove('hidden');
+        // 淡入效果
+        finalContainer.style.opacity = 0;
+        finalContainer.style.transition = "opacity 0.5s";
+        requestAnimationFrame(() => finalContainer.style.opacity = 1);
+    }
+    
+    if (restartBtn) restartBtn.classList.remove('hidden');
+
+    // 6. 最後定格 (確保地圖狀態正確)
+    drawRecipeMap();
 }
 
-function calculateFinalResult() {
-    console.log("[系統] 開始結算...");
-    document.getElementById('final-result-container').classList.remove('hidden');
-    document.getElementById('restart-btn').classList.remove('hidden');
+// script.js - 修改 calculateFinalResult (純計算與存檔，不負責動畫與顯示)
 
+async function calculateFinalResult() {
+    console.log("[系統] 執行數值結算...");
+    
+    // 1. 確保預覽箭頭消失 (currentStep=5 時 calculateCurrentPreviewData 回傳 null)
+    // 但此時尚未顯示結果面板
+    
     const resultID = Math.floor(Math.random() * 9000) + 1000;
-    if (potMaterials.length < 2) { log("錯誤：材料不足"); return; }
+    if (potMaterials.length < 2) { log("錯誤：材料不足"); return null; }
 
     // 備份資料
     if (lastResultData) {
@@ -1262,20 +1466,21 @@ function calculateFinalResult() {
     const toggleBtn = document.getElementById('toggle-result-btn');
     if (toggleBtn) toggleBtn.textContent = "👀 查看上一次結果";
 
-    // --- 1. 物理運算與排序 ---
+    // --- 1. 物理運算 ---
     let sortedMats = [...potMaterials].sort((a, b) => b.weight - a.weight);
     let pMat1 = sortedMats[0];
     let pMat2 = sortedMats[1];
     let dbMat1 = MaterialDB[pMat1.id];
     let dbMat2 = MaterialDB[pMat2.id];
+    
     let playerRes = calculateCoordinate(dbMat1, pMat1.weight, dbMat2, pMat2.weight, grindCoefficient);
 
+    // --- 2. 配方篩選 ---
     let bestRecipe = null;
     let isSlag = false;
     let slagReason = "";
     let errorType = "NONE";
 
-    // --- 2. 配方篩選 (門票檢查) ---
     let primaryCandidates = RecipeDB.filter(r => MaterialDB[r.targets[0]].element === dbMat1.element);
 
     if (primaryCandidates.length === 0) {
@@ -1296,7 +1501,6 @@ function calculateFinalResult() {
             if (diff < bestRatioDiff) { bestRatioDiff = diff; bestRecipe = r; }
         });
 
-        // --- 3. 品項與救援判定 ---
         if (bestRecipe) {
             let pMat1NameID = MaterialDB[pMat1.id].nameId;
             let pMat2NameID = MaterialDB[pMat2.id].nameId;
@@ -1311,11 +1515,15 @@ function calculateFinalResult() {
 
         if (success === 0 && bestRecipe) {
             let dist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
-            if (dist > SLAG_FALLBACK_DISTANCE) { isSlag = true; slagReason = "副材料不合且比例相差過大/"; bestRecipe = null; }
+            if (dist > SLAG_FALLBACK_DISTANCE) { 
+                isSlag = true; 
+                slagReason = "副材料不合且比例相差過大/"; 
+                bestRecipe = null; 
+            }
         }
     }
 
-    // --- 4. 兜底邏輯 ---
+    // --- 3. 兜底邏輯 ---
     if (!bestRecipe) {
         let minDist = 9999;
         RecipeDB.forEach(r => {
@@ -1326,9 +1534,8 @@ function calculateFinalResult() {
         if (!slagReason) slagReason = "未找到合適配方(例外情況)";
     }
 
-    // --- 5. 計算評級分數 ---
+    // --- 4. 計算評級 ---
     let bestDist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
-
     let pRatio = pMat1.weight / (pMat1.weight + pMat2.weight);
     let rTotal = bestRecipe.ratio[0] + bestRecipe.ratio[1];
     let matchRate = 1 - Math.abs(pRatio - (bestRecipe.ratio[0] / rTotal));
@@ -1342,42 +1549,20 @@ function calculateFinalResult() {
     matchRate *= penalty;
     let matchRatePct = Math.max(0, Math.min(100, matchRate * 100)).toFixed(1);
 
-    // script.js - 修改 calculateFinalResult 的評級區塊
-
-    // --- 6. 決定品質評級 ---
+    // --- 5. 品質判定 ---
     let quality = "D";
     let qualityPool = CommentsDB.SLAG;
 
     if (isSlag) {
         quality = "D";
     } else {
-        // ★★★ 修改處：移除強制鎖定 B 級的邏輯 ★★★
-        // 原本這裡有 if (errorType === "MATERIAL") { quality = "B"; ... }
-        // 現在我們直接讓數學決定命運！
-
-        // 嚴格的數學判定標準
-        // 注意：即使拿到 A，如果 errorType 是 MATERIAL，最後的 Advice 還是會罵玩家用錯材料 (這是我們要的效果)
-
         let isPerfect = (matchRate >= 0.99) && (Math.abs(grindCoefficient - bestRecipe.grindTarget) < 0.01) && (bestDist < 0.01);
-
-        if (isPerfect) {
-            quality = "U"; qualityPool = CommentsDB.U;
-        } else if (bestDist <= 0.05 && matchRate >= 0.95) {
-            quality = "S"; qualityPool = CommentsDB.S;
-        } else if (bestDist <= 0.4 && matchRate >= 0.70) {
-            quality = "A"; qualityPool = CommentsDB.A;
-        } else if (bestDist <= 1.0 && matchRate >= 0.50) {
-            quality = "B"; qualityPool = CommentsDB.B;
-        } else {
-            quality = "C"; qualityPool = CommentsDB.C;
-        }
+        if (isPerfect) { quality = "U"; qualityPool = CommentsDB.U; }
+        else if (bestDist <= 0.05 && matchRate >= 0.95) { quality = "S"; qualityPool = CommentsDB.S; }
+        else if (bestDist <= 0.4 && matchRate >= 0.70) { quality = "A"; qualityPool = CommentsDB.A; }
+        else if (bestDist <= 1.0 && matchRate >= 0.50) { quality = "B"; qualityPool = CommentsDB.B; }
+        else { quality = "C"; qualityPool = CommentsDB.C; }
     }
-
-    // 後面的 Advice 邏輯不用動，它會繼續運作
-    // 如果是 A 級替代品，玩家會看到：
-    // 評級：A 級 (數值漂亮)
-    // 建議：呵，這材料嘛…… (大師依然能嘗出材料不對)
-    // 這非常有「雖然好用但不是正統」的味道！
 
     let randomComment = qualityPool[Math.floor(Math.random() * qualityPool.length)];
     let finalComment = isSlag ? slagReason + " " + randomComment : randomComment;
@@ -1387,10 +1572,9 @@ function calculateFinalResult() {
     else if (errorType === "ELEMENT") advice = MasterAdviceDB.WRONG_ELEMENT;
     else advice = MasterAdviceDB.WRONG_RATIO;
 
-    // --- 7. 準備詳細資訊 ---
+    // --- 6. 詳細資訊 ---
     let symptomText = "無";
     let reactionText = "無";
-
     if (!isSlag && bestRecipe) {
         if (bestRecipe.symptoms && bestRecipe.symptoms.length > 0) {
             symptomText = bestRecipe.symptoms.map(sId => {
@@ -1398,18 +1582,15 @@ function calculateFinalResult() {
                 return sObj ? TextDB[sObj.descId] : "未知";
             }).join("、");
         }
-        if (bestRecipe.effectId) {
-            reactionText = TextDB[bestRecipe.effectId] || "無特殊反應";
-        }
+        if (bestRecipe.effectId) reactionText = TextDB[bestRecipe.effectId] || "無特殊反應";
     } else {
         reactionText = "你該不會想吃吃看吧？";
     }
 
-    // --- 8. 毒素計算 ---
+    // --- 7. 毒素 ---
     let toxinValX = 0, toxinValY = 0;
     let v1 = resolveDirection(dbMat1.element, dbMat2.element);
     let v2 = resolveDirection(dbMat2.element, dbMat1.element);
-
     if (v1.x !== 0) toxinValX = dbMat1.toxin; else if (v2.x !== 0) toxinValX = dbMat2.toxin;
     if (v1.y !== 0) toxinValY = dbMat1.toxin; else if (v2.y !== 0) toxinValY = dbMat2.toxin;
 
@@ -1418,15 +1599,13 @@ function calculateFinalResult() {
     if (finalToxin >= 60) finalToxin = 60;
     let displayToxin = finalToxin.toFixed(2);
 
-    // --- 9. 渣滓處理 ---
+    // --- 8. 建立資料物件 ---
     let finalName = isSlag ? "渣滓" : TextDB[bestRecipe.nameId];
     let finalElement = isSlag ? "無" : bestRecipe.element;
-    // --- 陰陽計算 ---
+    
     let finalYinYang = "無";
-
     if (!isSlag && bestRecipe && typeof bestRecipe.yinYang === "number") {
-        // yinYang 範圍假設是 -3 ~ +3，轉成 1~7
-        const yyIndex = bestRecipe.yinYang + 4; // -3 → 1, 0 → 4, +3 → 7
+        const yyIndex = bestRecipe.yinYang + 4; 
         finalYinYang = TextDB[yyIndex] || "未知";
     }
 
@@ -1434,6 +1613,7 @@ function calculateFinalResult() {
     let displayDeviation = isSlag ? "---" : bestDist.toFixed(2);
     let displayMatch = isSlag ? "---" : matchRatePct;
 
+    // ★ 更新全域座標 (這一步很重要，讓動畫知道終點在哪)
     lastPlayerResult = {
         x: playerRes.x, y: playerRes.y, name: finalName,
         tx: isSlag ? null : bestRecipe.targetX, ty: isSlag ? null : bestRecipe.targetY
@@ -1444,7 +1624,7 @@ function calculateFinalResult() {
         name: finalName,
         quality: quality,
         element: finalElement,
-        yinYang: finalYinYang, // ★ 新增
+        yinYang: finalYinYang,
         qualityText: quality === "D" ? "渣滓" : quality + "級",
         deviation: displayDeviation,
         matchRate: displayMatch,
@@ -1461,10 +1641,12 @@ function calculateFinalResult() {
     };
 
     lastResultData = resultData;
-    updateResultUI(resultData);
+    
+    // 更新隱藏的 DOM (準備顯示)
+    updateResultUI(resultData); 
+    
+    // 存檔
     saveToHistory(resultData);
-
-    // ★★★ [新增] 成功煉製則存入背包 ★★★
     if (!isSlag) {
         saveToInventory(resultData);
         log(`[背包] 已自動收藏：${finalName}`);
@@ -1472,7 +1654,8 @@ function calculateFinalResult() {
         log(`[背包] 渣滓不予收藏`);
     }
 
-    drawRecipeMap();
+    // ★ 回傳資料給動畫流程使用
+    return resultData;
 }
 
 // 修改：結算畫面 UI 更新邏輯 (固定寬度版)
@@ -1882,34 +2065,36 @@ window.toggleHistoryItem = function (element) {
         parent.classList.remove('open');
     }
 };
-// ★★★ [新增] 共用的狀態清除函式 ★★★
+// script.js - 修改 clearGameState
+
 function clearGameState() {
     console.log("[系統] 執行狀態清除...");
 
-    // 清空材料與權重
     potMaterials = [];
     selectedMatID = null;
     currentWeight = 0.0;
 
-    // 重置儀式變數
     resetRitualStates();
 
-    // ★★★ [修正] 徹底清除上一次的結果紀錄與地圖點 ★★★
     lastPlayerResult = null;
     previousPlayerResult = null;
     lastResultData = null;
     previousResultData = null;
     isShowingPreviousResult = false;
 
-    // 隱藏相關 UI
+    // ★ 新增：重置動畫狀態
+    settlementAnimPos = null;
+    isAnimatingSettlement = false;
+
     const finalResult = document.getElementById('final-result-container');
-    if (finalResult) finalResult.classList.add('hidden');
+    if (finalResult) {
+        finalResult.classList.add('hidden');
+        finalResult.style.opacity = 1; // 重置透明度
+    }
 
     const processText = document.getElementById('process-text');
     if (processText) processText.classList.add('hidden');
 
-    // ★★★ [關鍵] 清除地圖畫面 (畫布重繪為空白/僅背景) ★★★
-    // 這裡我們將 mapHitZones 清空並呼叫繪圖
     mapHitZones = [];
     drawRecipeMap();
 }
@@ -2085,7 +2270,7 @@ function renderEffectList() {
     // 這樣可以確保「止痛」等尚未發現配方的分類也能顯示
     Object.keys(SymptomsDB).forEach(key => {
         const symId = parseInt(key);
-        
+
         // 跳過 ID 0 (無症狀) 或無效資料
         if (symId === 0 || !SymptomsDB[symId]) return;
 
@@ -2094,9 +2279,9 @@ function renderEffectList() {
         const symptomName = TextDB[symData.descId] || `症狀-${symId}`;
 
         // 3. 在這個症狀下，找出符合條件的配方
-        const matchedRecipes = RecipeDB.filter(r => 
-            r.nameId && 
-            TextDB[r.nameId] !== "渣滓" && 
+        const matchedRecipes = RecipeDB.filter(r =>
+            r.nameId &&
+            TextDB[r.nameId] !== "渣滓" &&
             r.symptoms && r.symptoms.includes(symId) && // 配方包含此症狀
             (showAll || isRecipeDiscovered(r.nameId))   // 過濾：顯示全部 OR 已發現
         );
@@ -2131,7 +2316,7 @@ function renderEffectList() {
             matchedRecipes.forEach(recipe => {
                 const rName = TextDB[recipe.nameId];
                 const rElement = recipe.element;
-                
+
                 const colorMap = {
                     "金": "#C0C0C0", "木": "#4CAF50", "水": "#2196F3",
                     "火": "#FF5252", "土": "#FFC107", "全": "#FFFFFF"
@@ -2224,7 +2409,7 @@ function initMapListeners() {
         const rect = canvas.getBoundingClientRect();
         mapMouseX = e.clientX - rect.left;
         mapMouseY = e.clientY - rect.top;
-        
+
         // 如果目前【沒有】在跑呼吸燈動畫，才需要手動觸發重繪
         // (如果有在跑動畫，動畫迴圈會自動讀取 mapMouseX/Y，不需要這裡呼叫)
         if (!highlightAnimFrame) {
@@ -2236,12 +2421,12 @@ function initMapListeners() {
     canvas.addEventListener('mouseleave', () => {
         mapMouseX = null;
         mapMouseY = null;
-        
+
         if (!highlightAnimFrame) {
             drawRecipeMap();
         }
     });
-    
+
     // (選用) 點擊事件保持不變，但建議也使用 mapMouseX/Y
     canvas.addEventListener('click', () => {
         if (mapHitZones && mapMouseX !== null && mapMouseY !== null) {
@@ -2249,7 +2434,7 @@ function initMapListeners() {
             for (let zone of mapHitZones) {
                 let dx = mapMouseX - zone.x;
                 let dy = mapMouseY - zone.y;
-                if (dx*dx + dy*dy <= zone.r * zone.r) {
+                if (dx * dx + dy * dy <= zone.r * zone.r) {
                     // 如果點擊了，可以在這裡實作更多功能
                     console.log("點擊了配方:", zone.name);
                     break;
@@ -2267,6 +2452,41 @@ function toggleMapHints() {
         showMapHints = checkbox.checked;
         drawRecipeMap(); // 狀態改變後立即重繪
     }
+}
+// script.js - 新增結算動畫函式
+
+function animateSettlement(targetX, targetY, duration = 1000) {
+    return new Promise(resolve => {
+        isAnimatingSettlement = true;
+        const startX = 0; // 從原點出發
+        const startY = 0;
+        const startTime = performance.now();
+
+        function loop(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // 使用 Ease-Out 曲線，讓移動有減速感
+            const ease = 1 - Math.pow(1 - progress, 3);
+
+            // 計算當前座標
+            const curX = startX + (targetX - startX) * ease;
+            const curY = startY + (targetY - startY) * ease;
+
+            settlementAnimPos = { x: curX, y: curY };
+            drawRecipeMap(); // 重繪地圖 (Icon 會畫在 settlementAnimPos)
+
+            if (progress < 1) {
+                requestAnimationFrame(loop);
+            } else {
+                isAnimatingSettlement = false;
+                settlementAnimPos = null; // 動畫結束，清除位置
+                resolve(); // 完成 Promise
+            }
+        }
+
+        requestAnimationFrame(loop);
+    });
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {
