@@ -1354,7 +1354,44 @@ input[type=range] {
         opacity: 1;
     }
 }
+/* style.css - 新增地圖遮罩樣式 */
 
+/* 遮罩層本體 */
+.map-lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(18, 18, 18, 0.85); /* 深灰半透明 */
+    backdrop-filter: blur(2px); /* 輕微模糊背景，增加質感 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100; /* 確保蓋在 Canvas 上 */
+    border-radius: 4px;
+    transition: opacity 0.3s ease;
+}
+
+/* 遮罩內的文字訊息 */
+.lock-message {
+    color: #ccc;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: 1px solid #555;
+    padding: 10px 20px;
+    border-radius: 20px;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 隱藏遮罩用的 class */
+.map-lock-overlay.hidden {
+    opacity: 0;
+    pointer-events: none; /* 隱藏後不阻擋滑鼠點擊 */
+}
 /* --- 左上角選單容器 (取代舊的 history-btn-container) --- */
 #menu-container {
     position: absolute;

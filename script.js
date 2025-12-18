@@ -213,15 +213,20 @@ function switchPanel(panelID) {
     if (panel) panel.classList.remove('hidden');
 }
 
-// 修改：在進入流派選擇時，強制清除地圖殘留
+// script.js - 修改 showGameModeSelection (啟用遮罩)
+
 function showGameModeSelection() {
     const title = document.getElementById('step-title');
     const instruct = document.getElementById('instruction-text');
     const grid = document.getElementById('material-grid');
 
-    // ★ 修改點：回到流派選擇時，加上 hidden class 隱藏按鈕
+    // 隱藏流派說明按鈕
     const infoBtn = document.getElementById('mode-info-btn');
     if (infoBtn) infoBtn.classList.add('hidden');
+
+    // ★ 新增：顯示地圖遮罩 (移除 hidden class)
+    const mapOverlay = document.getElementById('map-overlay');
+    if (mapOverlay) mapOverlay.classList.remove('hidden');
 
     clearGameState();
 
@@ -233,7 +238,6 @@ function showGameModeSelection() {
     grid.className = "mode-selection-container";
     grid.innerHTML = "";
 
-    // 定義建立按鈕的函式 (記得宣告 const btn)
     const createModeBtn = (name, desc, color, modeKey) => {
         const btn = document.createElement('div');
         btn.className = "mat-btn mode-btn";
@@ -242,6 +246,7 @@ function showGameModeSelection() {
             <div class="mode-name">${name}</div>
             <div class="mode-desc">${desc}</div>
         `;
+        
         btn.onclick = () => {
             earthMode = modeKey;
             currentHistoryTab = modeKey;
@@ -256,6 +261,8 @@ function showGameModeSelection() {
     grid.appendChild(createModeBtn("☯️ 偏性流派", "土屬性補足缺失<br>填補另一軸向", "#8e44ad", "BIAS"));
 }
 
+// script.js - 修改 startGame (解除遮罩)
+
 function startGame() {
     console.log("[系統] 遊戲開始，初始化...");
     const grid = document.getElementById('material-grid');
@@ -263,17 +270,29 @@ function startGame() {
         grid.className = "";
         grid.style = "";
     }
-    stopMapHighlight();
-    initMapListeners()
-    // ★ 修改點：遊戲開始後，移除 hidden class 顯示按鈕
+
+    // 顯示流派說明按鈕
     const infoBtn = document.getElementById('mode-info-btn');
     if (infoBtn) infoBtn.classList.remove('hidden');
+
+    // ★ 新增：隱藏地圖遮罩 (加入 hidden class)
+    const mapOverlay = document.getElementById('map-overlay');
+    if (mapOverlay) mapOverlay.classList.add('hidden');
+
+    // 停止地圖導航動畫 (若有)
+    if (typeof stopMapHighlight === 'function') {
+        stopMapHighlight();
+    }
 
     refreshGameStateFromHistory();
     clearGameState();
 
     initMaterialGrid();
     calculateAllRecipeCoordinates();
+    
+    // 確保地圖重繪一次以正確顯示
+    drawRecipeMap();
+    
     setStep(0);
 }
 
