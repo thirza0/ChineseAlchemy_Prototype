@@ -1269,7 +1269,7 @@ input[type=range] {
     background: #1a1a1a;
     padding: 8px 10px;
     border-bottom: 1px solid #444;
-    color: #888;
+    color: #d4af37;
     font-size: 0.8rem;
     letter-spacing: 1px;
     flex-shrink: 0;
@@ -1494,13 +1494,13 @@ input[type=range] {
 /* style.css - 新增樣式區塊 */
 
 /* 1. 標題列容器：讓 h1 靠左，button 靠右 */
+/* 如果原本就有 .panel-header，這段會合併；若無則新增 */
 .panel-header {
     display: flex;
     justify-content: space-between;
-    align-items: right;
+    align-items: center;
     width: 100%;
-    margin-bottom: 15px; /* 與下方內容保持距離 */
-    position: relative;
+    margin-bottom: 10px;
 }
 
 /* 2. 修正 h1 樣式：移除預設 margin 避免排版跑掉 */

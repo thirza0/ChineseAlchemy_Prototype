@@ -85,6 +85,8 @@ let inventoryStorage = [];
 let highlightTargetId = null; // 當前要強調的配方 ID
 let highlightAnimFrame = null; // 動畫 Frame ID
 let highlightPulse = 0; // 呼吸燈的相位 (0~Math.PI*2)
+// ★ 新增：控制是否在地圖上顯示未探索的配方
+let showMapHints = false;
 
 // --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload
@@ -524,9 +526,8 @@ function updateZoomUI() {
     }
 }
 
-// script.js - 修改 drawRecipeMap (支援呼吸燈時的 Tooltip)
+// script.js - 更新 drawRecipeMap (支援半透明提示)
 
-// ★ 修改點：預設參數改為讀取全域變數 mapMouseX, mapMouseY
 function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     const canvas = document.getElementById('recipe-map');
     if (!canvas) return;
@@ -546,14 +547,14 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     const canvasRadiusPx = w / 2;
     const pixelsPerUnit = canvasRadiusPx / viewRadiusUnits;
 
-    // --- 2. 背景與象限色 ---
+    // --- 2. 背景與象限色 (保持不變) ---
     const far = w * 5;
     ctx.fillStyle = "#E0F7FA"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - far, cy - far); ctx.lineTo(cx + far, cy - far); ctx.closePath(); ctx.fill(); 
     ctx.fillStyle = "#F1F8E9"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + far, cy - far); ctx.lineTo(cx + far, cy + far); ctx.closePath(); ctx.fill(); 
     ctx.fillStyle = "#FBE9E7"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + far, cy + far); ctx.lineTo(cx - far, cy + far); ctx.closePath(); ctx.fill(); 
     ctx.fillStyle = "#ECEFF1"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - far, cy + far); ctx.lineTo(cx - far, cy - far); ctx.closePath(); ctx.fill(); 
 
-    // --- 3. 浮水印 ---
+    // --- 3. 浮水印 (保持不變) ---
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const fontSize = 50 + (60 / mapZoom);
     ctx.font = `bold ${fontSize}px 'Microsoft JhengHei'`;
@@ -563,7 +564,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     ctx.fillStyle = "rgba(255, 69, 0, 0.15)"; ctx.fillText("火", cx, cy + distPx);
     ctx.fillStyle = "rgba(112, 128, 144, 0.15)"; ctx.fillText("金", cx - distPx, cy);
 
-    // --- 4. 格線與軸線 ---
+    // --- 4. 格線與軸線 (保持不變) ---
     const subGridStepUnits = 0.2;
     const subGridStepPx = subGridStepUnits * pixelsPerUnit;
     const labelFontSize = 10 + (mapZoom - 1) * 2;
@@ -604,8 +605,6 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
 
     // --- 5. 繪製配方點 ---
     ctx.font = `bold ${10 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
-    // 只有當 mapHitZones 需要重建時才清空，或者每次重繪都清空
-    // 建議每次清空以確保位置準確
     mapHitZones = []; 
 
     let hoveredRecipe = null;
@@ -620,61 +619,61 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
 
         const isDiscovered = (typeof isRecipeDiscovered === 'function') ? isRecipeDiscovered(r.nameId) : false;
         
-        // 隱藏條件
-        if (!isDiscovered && highlightTargetId !== r.nameId) {
+        // ★★★ 關鍵修改：顯示條件放寬 ★★★
+        // 原本: !isDiscovered && highlightTargetId !== r.nameId -> return
+        // 現在: 如果 showMapHints 為 true，就不 return，而是繼續往下畫
+        if (!isDiscovered && highlightTargetId !== r.nameId && !showMapHints) {
             return; 
         }
 
-        // 加入互動感應區
+        // 記錄感應區
         mapHitZones.push({ x: drawX, y: drawY, r: currentIconRadius * 1.5, name: rName, tx: r.targetX, ty: r.targetY });
 
-        // --- 呼吸燈 ---
+        // --- 呼吸燈邏輯 ---
         if (highlightTargetId === r.nameId) {
             const pulseRadius = currentIconRadius * 1.5 + Math.sin(highlightPulse) * 5;
             const alpha = 0.5 + Math.sin(highlightPulse) * 0.3;
             ctx.save();
             ctx.beginPath();
             ctx.arc(drawX, drawY, pulseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(127, 17, 224, ${alpha})`;
+            ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
             ctx.fill();
             ctx.beginPath();
             ctx.arc(drawX, drawY, pulseRadius + 5, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(127, 17, 224, ${alpha * 0.5})`;
+            ctx.strokeStyle = `rgba(255, 215, 0, ${alpha * 0.5})`;
             ctx.lineWidth = 2;
             ctx.stroke();
             ctx.restore();
         }
 
-        // --- 懸停判定 (使用傳入的 hoverX/Y) ---
+        // --- 繪製本體 ---
+        
+        // ★★★ 關鍵修改：如果是提示點 (未發現 且 非導航目標)，設定半透明 ★★★
+        const isHint = (!isDiscovered && highlightTargetId !== r.nameId);
+        if (isHint) {
+            ctx.save(); // 保存當前狀態
+            ctx.globalAlpha = 0.6; // 設定半透明
+        }
+
+        // 懸停判斷
+        let isHover = false;
         if (hoverX !== null && hoverY !== null) {
             let dx = hoverX - drawX;
             let dy = hoverY - drawY;
-            // 判定範圍稍微加大一點，比較好點
             if (dx * dx + dy * dy <= Math.pow(currentIconRadius * 1.8, 2)) {
                 hoveredRecipe = { 
-                    name: rName, 
-                    x: drawX, 
-                    y: drawY, 
-                    tx: r.targetX, 
-                    ty: r.targetY,
-                    isDiscovered: isDiscovered 
+                    name: rName, x: drawX, y: drawY, tx: r.targetX, ty: r.targetY, isDiscovered: isDiscovered 
                 };
+                isHover = true;
             }
         }
 
-        // --- 繪製圖示 ---
-        let baseColor, borderColor;
-        if (isDiscovered) {
-            baseColor = "#d4af37"; 
-            borderColor = "#d4af37";
-        } else {
-            baseColor = "#555555"; 
-            borderColor = "#777777";
-        }
-
+        // 決定顏色 (未發現的一律用深灰鎖頭色)
+        let baseColor = isDiscovered ? "#d4af37" : "#555555";
+        let borderColor = isDiscovered ? "#777777" : "#d4af37";
         const isTargetHover = (hoveredRecipe && hoveredRecipe.name === rName);
+        
         ctx.fillStyle = isTargetHover ? "#fff" : baseColor;
-
         ctx.beginPath();
         ctx.arc(drawX, drawY, currentIconRadius, 0, Math.PI * 2);
         ctx.fill();
@@ -683,7 +682,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
         ctx.lineWidth = isTargetHover ? 2 : 1.5;
         ctx.stroke();
 
-        // --- 文字與鎖頭 ---
+        // 繪製文字或鎖頭
         ctx.textBaseline = "middle";
         ctx.textAlign = "center";
         
@@ -698,9 +697,14 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
             ctx.font = `${8 + (mapZoom - 1) * 2}px Arial`; 
             ctx.fillText("🔒", drawX, drawY + (mapZoom > 2 ? 1 : 1));
         }
+
+        // ★★★ 關鍵修改：如果是提示點，恢復透明度 ★★★
+        if (isHint) {
+            ctx.restore(); // 恢復 globalAlpha = 1
+        }
     });
 
-    // --- 6. 玩家結果連線 ---
+    // --- 6. 玩家結果連線 (保持不變) ---
     const resultToShow = isShowingPreviousResult ? previousPlayerResult : lastPlayerResult;
 
     if (resultToShow) {
@@ -727,12 +731,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
                 let dx = hoverX - pDrawX; let dy = hoverY - pDrawY;
                 if (dx * dx + dy * dy <= Math.pow(currentIconRadius * 1.5, 2)) {
                     hoveredRecipe = {
-                        name: resultToShow.name, 
-                        x: pDrawX, 
-                        y: pDrawY, 
-                        tx: resultToShow.x, 
-                        ty: resultToShow.y,
-                        isDiscovered: true 
+                        name: resultToShow.name, x: pDrawX, y: pDrawY, tx: resultToShow.x, ty: resultToShow.y, isDiscovered: true 
                     };
                 }
             }
@@ -2239,6 +2238,16 @@ function initMapListeners() {
             }
         }
     });
+}
+// script.js - 新增功能函式
+
+// 切換地圖提示顯示狀態
+function toggleMapHints() {
+    const checkbox = document.getElementById('map-hint-check');
+    if (checkbox) {
+        showMapHints = checkbox.checked;
+        drawRecipeMap(); // 狀態改變後立即重繪
+    }
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {
