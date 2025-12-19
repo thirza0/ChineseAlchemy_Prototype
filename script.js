@@ -96,7 +96,8 @@ let highlightAnimFrame = null; // 動畫 Frame ID
 let highlightPulse = 0; // 呼吸燈的相位 (0~Math.PI*2)
 // ★ 新增：控制是否在地圖上顯示未探索的配方
 let showMapHints = true;
-
+// ★ 新增：控制是否顯示煉製過程中的即時預覽箭頭 (預設開啟)
+let showPreviewGuide = true;
 // --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload
 window.onload = function () {
@@ -224,18 +225,20 @@ function switchPanel(panelID) {
     if (panel) panel.classList.remove('hidden');
 }
 
-// script.js - 修改 showGameModeSelection (啟用遮罩)
+// script.js - 修改 showGameModeSelection (加入預覽開關)
+
+// script.js - 修改 showGameModeSelection (開關移至下方)
 
 function showGameModeSelection() {
     const title = document.getElementById('step-title');
     const instruct = document.getElementById('instruction-text');
     const grid = document.getElementById('material-grid');
 
-    // 隱藏流派說明按鈕
+    // 隱藏流派說明按鈕 (選完才出現)
     const infoBtn = document.getElementById('mode-info-btn');
     if (infoBtn) infoBtn.classList.add('hidden');
 
-    // ★ 新增：顯示地圖遮罩 (移除 hidden class)
+    // 顯示地圖遮罩
     const mapOverlay = document.getElementById('map-overlay');
     if (mapOverlay) mapOverlay.classList.remove('hidden');
 
@@ -246,8 +249,13 @@ function showGameModeSelection() {
 
     switchPanel('material-grid');
 
-    grid.className = "mode-selection-container";
+    // 1. 設定容器樣式 (使用 Wrapper 進行垂直排版)
+    grid.className = "mode-selection-wrapper"; 
     grid.innerHTML = "";
+
+    // --- A. 建立流派按鈕區 (Container) ---
+    const btnContainer = document.createElement('div');
+    btnContainer.className = "mode-selection-container"; // 橫向排列
 
     const createModeBtn = (name, desc, color, modeKey) => {
         const btn = document.createElement('div');
@@ -257,19 +265,38 @@ function showGameModeSelection() {
             <div class="mode-name">${name}</div>
             <div class="mode-desc">${desc}</div>
         `;
-
+        
         btn.onclick = () => {
             earthMode = modeKey;
             currentHistoryTab = modeKey;
-            log(`玩家選擇流派：【${name}】`);
+            log(`玩家選擇流派：【${name}】 (預覽: ${showPreviewGuide ? 'ON' : 'OFF'})`);
             startGame();
         };
         return btn;
     };
 
-    grid.appendChild(createModeBtn("🛡️ 中和流", "土屬性座標為 0<br>用於稀釋藥性", "#4a69bd", "NEUTRAL"));
-    grid.appendChild(createModeBtn("🚀 延伸流", "土屬性模仿他者<br>大幅增強藥效", "#e58e26", "EXTEND"));
-    grid.appendChild(createModeBtn("☯️ 偏性流派", "土屬性補足缺失<br>填補另一軸向", "#8e44ad", "BIAS"));
+    btnContainer.appendChild(createModeBtn("🛡️ 中和流", "土屬性座標為 0<br>用於稀釋藥性", "#4a69bd", "NEUTRAL"));
+    btnContainer.appendChild(createModeBtn("🚀 延伸流", "土屬性模仿他者<br>大幅增強藥效", "#e58e26", "EXTEND"));
+    btnContainer.appendChild(createModeBtn("☯️ 偏性流派", "土屬性補足缺失<br>填補另一軸向", "#8e44ad", "BIAS"));
+
+    // --- B. 建立預覽開關區 (Toggle) ---
+    const toggleDiv = document.createElement('div');
+    toggleDiv.className = "preview-toggle-box";
+    toggleDiv.innerHTML = `
+        <input type="checkbox" id="preview-mode-switch" class="preview-toggle-input" ${showPreviewGuide ? 'checked' : ''}>
+        <label for="preview-mode-switch" class="preview-toggle-label">開啟羅盤指引 (路徑預覽)</label>
+    `;
+    
+    // 綁定事件
+    toggleDiv.querySelector('input').addEventListener('change', (e) => {
+        showPreviewGuide = e.target.checked;
+        // 如果想更即時反饋，可以在這裡加個 log
+        // console.log(`預覽模式: ${showPreviewGuide}`);
+    });
+
+    // --- C. 依序加入畫面 (決定上下順序) ---
+    grid.appendChild(btnContainer); // 1. 按鈕在上面
+    grid.appendChild(toggleDiv);    // 2. 開關在下面
 }
 
 // script.js - 修改 startGame (解除遮罩)
@@ -431,8 +458,11 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
 // script.js - 修改 calculateCurrentPreviewData
 
 function calculateCurrentPreviewData() {
-    // 如果已經結算(步驟5)，就不顯示預覽箭頭
+    // 1. 如果已經結算，不顯示
     if (currentStep === 5) return null;
+
+    // ★★★ 2. 新增檢查：如果預覽模式被關閉，直接不回傳資料 ★★★
+    if (!showPreviewGuide) return null;
 
     let m1 = null, w1 = 0;
     let m2 = null, w2 = 0;
@@ -442,53 +472,33 @@ function calculateCurrentPreviewData() {
     // Grind=0 -> Effective=0.5 (實線佔一半，虛線延伸另一半)
     let previewGrind = 0.0;
 
-    // --- 情境 A：正在選擇或秤重第一種材料 ---
+
     if (currentStep <= 1 && selectedMatID) {
         m1 = MaterialDB[selectedMatID];
-        w1 = currentWeight > 0 ? currentWeight : 0.1;
-        m2 = null;
-        w2 = 0;
+        w1 = currentWeight > 0 ? currentWeight : 0.1; 
+        m2 = null; w2 = 0;
     }
-    // --- 情境 B：正在選擇或秤重第二種材料 ---
     else if (currentStep >= 2 && currentStep <= 3 && potMaterials.length > 0 && selectedMatID) {
         let pm = potMaterials[0];
-        m1 = MaterialDB[pm.id];
-        w1 = pm.weight;
-        m2 = MaterialDB[selectedMatID];
-        w2 = currentWeight;
+        m1 = MaterialDB[pm.id]; w1 = pm.weight;
+        m2 = MaterialDB[selectedMatID]; w2 = currentWeight;
     }
-    // --- 情境 C：煉製儀式中 - 研磨階段 ---
     else if (currentStep === 4 && potMaterials.length >= 2) {
-        let pm1 = potMaterials[0];
-        let pm2 = potMaterials[1];
-        m1 = MaterialDB[pm1.id];
-        w1 = pm1.weight;
-        m2 = MaterialDB[pm2.id];
-        w2 = pm2.weight;
-
-        if (ritualStepIndex === 0) {
-            previewGrind = grindProgress / 100;
-        } else {
-            previewGrind = grindCoefficient > 0 ? grindCoefficient : 0.0;
-        }
-    }
-    else {
-        return null;
-    }
+        let pm1 = potMaterials[0]; let pm2 = potMaterials[1];
+        m1 = MaterialDB[pm1.id]; w1 = pm1.weight;
+        m2 = MaterialDB[pm2.id]; w2 = pm2.weight;
+        if (ritualStepIndex === 0) previewGrind = grindProgress / 100;
+        else previewGrind = grindCoefficient > 0 ? grindCoefficient : 0.0; 
+    } 
+    else { return null; }
 
     if (!m1) return null;
     if (!m2) { m2 = m1; w2 = 0; }
 
-    // 1. 理論最大值 (虛線尖端)：假設研磨係數 1.0
     let maxRes = calculateCoordinate(m1, w1, m2, w2, 1.0);
-
-    // 2. 當前有效值 (實線尖端)：依照當前研磨度
     let curRes = calculateCoordinate(m1, w1, m2, w2, previewGrind);
 
-    return {
-        max: maxRes,
-        cur: curRes
-    };
+    return { max: maxRes, cur: curRes };
 }
 
 function calculateAllRecipeCoordinates() {

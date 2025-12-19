@@ -1574,3 +1574,66 @@ input[type=range] {
 .hidden {
     display: none !important;
 }
+/* style.css - 新增預覽模式切換開關樣式 */
+
+/* style.css - 修正排版問題 */
+
+/* ★ 修改：提高權重 (#id.class) 並強制使用 flex */
+#material-grid.mode-selection-wrapper {
+    display: flex !important;       /* ★ 強制覆蓋原本的 grid */
+    flex-direction: column;         /* ★ 強制垂直排列 */
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    gap: 20px;                      /* 上下間距 */
+}
+
+/* 2. 流派按鈕容器 */
+.mode-selection-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    width: 100%;
+    /* margin-bottom: 30px;  <-- 這行可以拿掉，改由上面的 gap 控制即可 */
+}
+
+/* 3. 開關控制區塊 (保持不變，或微調) */
+.preview-toggle-box {
+    background-color: rgba(30, 30, 30, 0.6);
+    border: 1px solid #555;
+    padding: 12px 25px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s;
+    /* margin-top: 10px; <-- 這行也可以拿掉，交給 gap 控制 */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.preview-toggle-box:hover {
+    border-color: #d4af37;
+    background-color: rgba(212, 175, 55, 0.15);
+    transform: translateY(-2px);
+}
+
+/* 核取方塊樣式 (保持不變) */
+.preview-toggle-input {
+    accent-color: #d4af37;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.preview-toggle-label {
+    color: #ccc;
+    font-size: 1rem;
+    cursor: pointer;
+    user-select: none;
+    letter-spacing: 1px;
+}
+
+.preview-toggle-box:hover .preview-toggle-label {
+    color: #fff;
+}
