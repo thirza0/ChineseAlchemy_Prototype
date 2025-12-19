@@ -440,9 +440,9 @@ const RecipeDB = [
     },
     {
         nameId: 32, // 太清金液
-        targets: ["HUANG_JIN", "SHUI_YIN"],
-        ratio: [10.0, 20.0],
-        element: Elements.EARTH,
+        targets: ["SHUI_YIN", "HUANG_JIN"],
+        ratio: [20.0, 10.0],
+        element: Elements.METAL,
         yinYang: 2,
         grindTarget: 0.6,
         descId: 12,
