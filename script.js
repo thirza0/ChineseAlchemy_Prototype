@@ -1677,10 +1677,11 @@ function updateResultUI(data) {
     const elColor = elColorMap[data.element] || "#FFF";
 
     let qColor = "#777";
-    if (data.quality === 'U' || data.quality === 'S') qColor = "#FFD700";
+    // ★★★ 修改這裡：把 U 和 S 拆開 ★★★
+    if (data.quality === 'U') qColor = "#db1212ff";      // <--- 在這裡填入您想要的 U 級顏色 (例如：洋紅/紫)
+    else if (data.quality === 'S') qColor = "#FFD700"; // S 級維持金色
     else if (data.quality === 'A') qColor = "#90EE90";
     else if (data.quality === 'B') qColor = "#87CEEB";
-
     // 2. 注入 HTML (使用 Inline Style 強制排版)
     container.innerHTML = `
         <div style="display: flex; flex-direction: row; width: 100%; height: 100%; overflow: hidden;">
