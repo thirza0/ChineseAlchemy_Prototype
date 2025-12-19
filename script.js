@@ -2567,68 +2567,82 @@ function checkPatientData() {
     renderNoPatientState();
 }
 
-// script.js - 修改 loadPatientData
+// script.js - 修改 checkPatientData (支援 Hash Payload 與 Base64 解碼)
 
-// script.js - 修改 loadPatientData (支援真實姓名)
+function checkPatientData() {
+    console.log("[系統] 檢查病患資料來源...");
 
-function loadPatientData(data) {
-    let patient = {};
+    // 1. 優先檢查 Hash 參數 (#payload=...) -> 這是問診系統目前用的格式
+    // 取得 # 之後的字串
+    const hash = window.location.hash.substring(1); 
+    const hashParams = new URLSearchParams(hash);
+    const payload = hashParams.get('payload');
 
-    // ★ 判斷是否為新版規範格式 (檢查是否有 diagnosis.truth 結構)
-    if (data.diagnosis && data.diagnosis.truth) {
-        console.log("[系統] 識別為標準診斷書格式 (v" + data.version + ")");
-        
-        const truth = data.diagnosis.truth;
-        
-        // 1. 姓名處理：優先讀取 customerName，若無則退回使用時間戳編號
-        if (truth.customerName) {
-            patient.name = truth.customerName;
-        } else {
-            // Fallback: 取 timestamp 的後幾碼當代號
-            const timeCode = data.timestamp ? data.timestamp.split('T')[1].split('.')[0].replace(/:/g, '') : "Unknown";
-            patient.name = `病患-${timeCode}`;
-        }
-        
-        // 2. 五行屬性
-        patient.element = truth.constitution;
+    if (payload) {
+        try {
+            console.log("[系統] 偵測到 Hash Payload，嘗試解碼...");
+            
+            // A. Base64 URL Safe 處理 (把 - 換成 +, _ 換成 /)
+            let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+            
+            // B. 補足 Padding (Base64 長度需為 4 的倍數)
+            while (base64.length % 4) {
+                base64 += '=';
+            }
 
-        // 3. 毒素 (目前 / 上限)
-        patient.currentToxin = truth.toxicity.current;
-        patient.maxToxin = truth.toxicity.max;
-        patient.toxinDisplay = `${truth.toxicity.current} / ${truth.toxicity.max}`;
+            // C. 解碼 Base64 (處理 UTF-8 中文亂碼問題)
+            // 使用 decodeURIComponent + escape 的方式來正確還原中文
+            const jsonString = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
 
-        // 4. 症狀代碼轉換 (A~E -> 1~5)
-        // A=1(水), B=2(火), C=3(土), D=4(木), E=5(金)
-        const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
-        patient.symptoms = [];
-        
-        if (Array.isArray(truth.needs)) {
-            truth.needs.forEach(need => {
-                if (need.code && codeMap[need.code]) {
-                    patient.symptoms.push(codeMap[need.code]);
-                }
-            });
-        }
-
-        patient.notes = "由問診系統自動匯入";
-
-    } else {
-        // ★ 相容舊版簡單格式 (手動測試用)
-        if (!data.element) {
-            alert("匯入失敗：病患資料格式不完整 (缺少必要欄位)");
-            renderNoPatientState();
+            const decodedData = JSON.parse(jsonString);
+            console.log("[系統] Payload 解析成功:", decodedData);
+            
+            loadPatientData(decodedData);
+            
+            // (選用) 清除網址列的 payload，讓網址變乾淨，避免 F5 重複讀取
+            // history.replaceState(null, null, ' '); 
             return;
+
+        } catch (e) {
+            console.error("Payload Base64 解析失敗:", e);
+            alert("病患資料格式錯誤 (Base64 解碼失敗)");
         }
-        console.log("[系統] 識別為簡易測試格式");
-        patient = data;
-        // 舊版可能只有 maxToxin，做個相容
-        patient.toxinDisplay = data.maxToxin || "未知";
     }
 
-    currentPatientData = patient;
-    renderPatientInfo(patient);
-}
+    // 2. 次要檢查 URL 查詢參數 (?data=...) -> 保留舊的測試方式
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlData = urlParams.get('data');
 
+    if (urlData) {
+        try {
+            const decodedData = JSON.parse(decodeURIComponent(urlData));
+            console.log("[系統] 偵測到 URL Query 資料:", decodedData);
+            loadPatientData(decodedData);
+            return;
+        } catch (e) {
+            console.error("URL Query 解析失敗:", e);
+        }
+    }
+
+    // 3. 最後檢查 LocalStorage -> 同機測試用
+    const localData = localStorage.getItem('incoming_patient');
+    if (localData) {
+        try {
+            const parsedData = JSON.parse(localData);
+            console.log("[系統] 偵測到 LocalStorage 病患資料:", parsedData);
+            loadPatientData(parsedData);
+            localStorage.removeItem('incoming_patient');
+            return;
+        } catch (e) {
+            console.error("LocalStorage 資料解析失敗:", e);
+        }
+    }
+
+    // 若都無資料，顯示上傳介面
+    renderNoPatientState();
+}
 // script.js - 修改 renderPatientInfo
 
 function renderPatientInfo(data) {
