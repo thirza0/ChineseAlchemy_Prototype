@@ -2567,81 +2567,114 @@ function checkPatientData() {
     renderNoPatientState();
 }
 
-// script.js - 修改 checkPatientData (支援 Hash Payload 與 Base64 解碼)
+// script.js - checkPatientData (Debug Version)
 
 function checkPatientData() {
-    console.log("[系統] 檢查病患資料來源...");
+    console.group("🔍 [系統診斷] 開始檢查病患資料...");
+    console.log("1. 當前完整 URL:", window.location.href);
+    console.log("2. 當前 Hash 值:", window.location.hash);
 
-    // 1. 優先檢查 Hash 參數 (#payload=...) -> 這是問診系統目前用的格式
-    // 取得 # 之後的字串
-    const hash = window.location.hash.substring(1); 
-    const hashParams = new URLSearchParams(hash);
-    const payload = hashParams.get('payload');
-
-    if (payload) {
-        try {
-            console.log("[系統] 偵測到 Hash Payload，嘗試解碼...");
-            
-            // A. Base64 URL Safe 處理 (把 - 換成 +, _ 換成 /)
-            let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-            
-            // B. 補足 Padding (Base64 長度需為 4 的倍數)
-            while (base64.length % 4) {
-                base64 += '=';
-            }
-
-            // C. 解碼 Base64 (處理 UTF-8 中文亂碼問題)
-            // 使用 decodeURIComponent + escape 的方式來正確還原中文
-            const jsonString = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-
-            const decodedData = JSON.parse(jsonString);
-            console.log("[系統] Payload 解析成功:", decodedData);
-            
-            loadPatientData(decodedData);
-            
-            // (選用) 清除網址列的 payload，讓網址變乾淨，避免 F5 重複讀取
-            // history.replaceState(null, null, ' '); 
-            return;
-
-        } catch (e) {
-            console.error("Payload Base64 解析失敗:", e);
-            alert("病患資料格式錯誤 (Base64 解碼失敗)");
+    // 1. 優先檢查 Hash Payload (#payload=...)
+    const hash = window.location.hash.substring(1); // 去掉 #
+    
+    // ★ 改用更原始的方式切割，避免 URLSearchParams 自動把 '+' 轉成空白
+    let payload = null;
+    if (hash.includes('payload=')) {
+        // 找到 payload= 的位置，取出後面的所有字串
+        const start = hash.indexOf('payload=') + 8;
+        payload = hash.substring(start);
+        
+        // 如果後面還有其他參數(用 & 分隔)，要切掉
+        if (payload.includes('&')) {
+            payload = payload.split('&')[0];
         }
     }
 
-    // 2. 次要檢查 URL 查詢參數 (?data=...) -> 保留舊的測試方式
+    console.log("3. 擷取到的 Payload 原始字串:", payload ? (payload.substring(0, 30) + "...") : "無");
+
+    if (payload) {
+        try {
+            console.log(">> 準備進行 Base64 解碼...");
+            
+            // A. 格式清洗
+            // 1. 把被瀏覽器轉義的 %XX 轉回來 (如果有)
+            let base64 = decodeURIComponent(payload);
+            // 2. 處理 URL Safe Base64: '-' -> '+', '_' -> '/'
+            base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+            // 3. 處理可能的空白 (有些瀏覽器會把 + 轉成空白)
+            base64 = base64.replace(/ /g, '+');
+            
+            console.log("4. 清洗後的 Base64:", base64.substring(0, 30) + "...");
+
+            // B. 補足 Padding (=)
+            // Base64 長度必須是 4 的倍數
+            while (base64.length % 4) {
+                base64 += '=';
+            }
+            console.log("5. 補足 Padding 後長度:", base64.length);
+
+            // C. 解碼 (處理 UTF-8 中文)
+            const rawString = atob(base64);
+            const jsonString = decodeURIComponent(rawString.split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            console.log("6. 解碼成功，JSON 字串:", jsonString.substring(0, 50) + "...");
+
+            // D. 轉成物件
+            const decodedData = JSON.parse(jsonString);
+            console.log("7. JSON Parse 成功! 資料物件:", decodedData);
+
+            // E. 載入
+            loadPatientData(decodedData);
+            console.log("✅ 成功呼叫 loadPatientData，請檢查畫面顯示。");
+            
+            console.groupEnd();
+            return;
+
+        } catch (e) {
+            console.error("❌ 解析失敗 (Critical Error):", e);
+            alert("⚠️ 病患資料讀取失敗！\n\n錯誤原因: " + e.message + "\n\n請截圖 Console 給開發者檢查。");
+            console.groupEnd();
+        }
+    } else {
+        console.log("⚠️ 未偵測到 Hash Payload，嘗試檢查其他來源...");
+    }
+
+    // 2. 次要檢查 URL Query (?data=...)
     const urlParams = new URLSearchParams(window.location.search);
     const urlData = urlParams.get('data');
 
     if (urlData) {
         try {
+            console.log(">> 偵測到 ?data= 參數");
             const decodedData = JSON.parse(decodeURIComponent(urlData));
-            console.log("[系統] 偵測到 URL Query 資料:", decodedData);
             loadPatientData(decodedData);
+            console.groupEnd();
             return;
         } catch (e) {
             console.error("URL Query 解析失敗:", e);
         }
     }
 
-    // 3. 最後檢查 LocalStorage -> 同機測試用
+    // 3. 最後檢查 LocalStorage
     const localData = localStorage.getItem('incoming_patient');
     if (localData) {
         try {
+            console.log(">> 偵測到 LocalStorage 資料");
             const parsedData = JSON.parse(localData);
-            console.log("[系統] 偵測到 LocalStorage 病患資料:", parsedData);
             loadPatientData(parsedData);
             localStorage.removeItem('incoming_patient');
+            console.groupEnd();
             return;
         } catch (e) {
-            console.error("LocalStorage 資料解析失敗:", e);
+            console.error("LocalStorage 解析失敗:", e);
         }
     }
 
-    // 若都無資料，顯示上傳介面
+    console.log(">> 無任何外部資料，顯示上傳介面。");
     renderNoPatientState();
+    console.groupEnd();
 }
 // script.js - 修改 renderPatientInfo
 
