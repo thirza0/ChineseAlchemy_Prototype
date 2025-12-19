@@ -723,9 +723,9 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
             const alpha = 0.5 + Math.sin(highlightPulse) * 0.3;
             ctx.save();
             ctx.beginPath(); ctx.arc(drawX, drawY, pulseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`; ctx.fill();
+            ctx.fillStyle = `rgba(127, 17, 224,  ${alpha})`; ctx.fill();
             ctx.beginPath(); ctx.arc(drawX, drawY, pulseRadius + 5, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 215, 0, ${alpha * 0.5})`; ctx.lineWidth = 2; ctx.stroke();
+            ctx.strokeStyle = `rgba(127, 17, 224,  ${alpha * 0.5})`; ctx.lineWidth = 2; ctx.stroke();
             ctx.restore();
         }
 
