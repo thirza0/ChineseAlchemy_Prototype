@@ -117,7 +117,7 @@ window.onload = function () {
     }
     log("系統啟動完成 (v13.0 Inventory Added)");
 
-    // ★ 新增：檢查是否有外部傳入的病患資料
+    // ★ 務必確認這行存在
     checkPatientData();
 
     loadHistoryFromStorage();
@@ -2567,7 +2567,7 @@ function checkPatientData() {
     renderNoPatientState();
 }
 
-// script.js - checkPatientData (Debug Version)
+// script.js - checkPatientData (除錯偵探版)
 
 function checkPatientData() {
     console.group("🔍 [系統診斷] 開始檢查病患資料...");
@@ -2577,7 +2577,7 @@ function checkPatientData() {
     // 1. 優先檢查 Hash Payload (#payload=...)
     const hash = window.location.hash.substring(1); // 去掉 #
     
-    // ★ 改用更原始的方式切割，避免 URLSearchParams 自動把 '+' 轉成空白
+    // ★ 改用更穩健的方式切割，避免 URLSearchParams 自動把 '+' 轉成空白的潛在問題
     let payload = null;
     if (hash.includes('payload=')) {
         // 找到 payload= 的位置，取出後面的所有字串
@@ -2601,7 +2601,7 @@ function checkPatientData() {
             let base64 = decodeURIComponent(payload);
             // 2. 處理 URL Safe Base64: '-' -> '+', '_' -> '/'
             base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
-            // 3. 處理可能的空白 (有些瀏覽器會把 + 轉成空白)
+            // 3. 處理可能的空白 (有些瀏覽器會把 URL 中的 + 轉成空白)
             base64 = base64.replace(/ /g, '+');
             
             console.log("4. 清洗後的 Base64:", base64.substring(0, 30) + "...");
@@ -2626,8 +2626,15 @@ function checkPatientData() {
             console.log("7. JSON Parse 成功! 資料物件:", decodedData);
 
             // E. 載入
-            loadPatientData(decodedData);
-            console.log("✅ 成功呼叫 loadPatientData，請檢查畫面顯示。");
+            if (typeof loadPatientData === 'function') {
+                loadPatientData(decodedData);
+                console.log("✅ 成功呼叫 loadPatientData，請檢查畫面右側。");
+                // 成功後彈個提示 (測試用，確認成功後可拿掉)
+                // alert("病患資料讀取成功：\n" + (decodedData.diagnosis?.truth?.customerName || "未知"));
+            } else {
+                console.error("❌ 錯誤: 找不到 loadPatientData 函式！");
+                alert("系統錯誤：找不到載入函式 (loadPatientData)");
+            }
             
             console.groupEnd();
             return;
@@ -2654,21 +2661,6 @@ function checkPatientData() {
             return;
         } catch (e) {
             console.error("URL Query 解析失敗:", e);
-        }
-    }
-
-    // 3. 最後檢查 LocalStorage
-    const localData = localStorage.getItem('incoming_patient');
-    if (localData) {
-        try {
-            console.log(">> 偵測到 LocalStorage 資料");
-            const parsedData = JSON.parse(localData);
-            loadPatientData(parsedData);
-            localStorage.removeItem('incoming_patient');
-            console.groupEnd();
-            return;
-        } catch (e) {
-            console.error("LocalStorage 解析失敗:", e);
         }
     }
 
