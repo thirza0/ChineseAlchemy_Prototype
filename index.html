@@ -228,7 +228,7 @@
     <div id="instruction-modal" class="modal hidden">
         <div class="modal-content instruction-content">
             <div class="modal-header">
-                <h2>煉丹須知ver.18.3.12.19</h2>
+                <h2>煉丹須知ver.19.12.19</h2>
                 <span class="close-btn" onclick="closeInstructionModal()">×</span>
             </div>
 
@@ -299,6 +299,51 @@
         </div>
 
     </div>
+    </div>
+    <div id="patient-info-panel" class="patient-panel">
+        <div class="patient-header">
+            <h3>📋 病歷資料</h3>
+            <span id="patient-status-indicator" class="status-dot red" title="無資料"></span>
+        </div>
+
+        <div id="patient-data-display" class="hidden">
+            <div class="patient-row">
+                <span class="label">姓名：</span>
+                <span id="p-name" class="value">---</span>
+            </div>
+            <div class="patient-row">
+                <span class="label">五行：</span>
+                <span id="p-element" class="value highlight">---</span>
+            </div>
+            <div class="patient-row">
+                <span class="label">毒素(現/限)：</span> <span id="p-max-toxin" class="value warn">---</span>
+            </div>
+
+            <hr class="separator">
+
+            <div class="patient-section">
+                <div class="label">主訴症狀：</div>
+                <ul id="p-symptoms-list" class="symptoms-list">
+                </ul>
+            </div>
+
+            <div class="patient-section">
+                <div class="label">備註：</div>
+                <div id="p-notes" class="notes-box">---</div>
+            </div>
+
+            <button class="clear-patient-btn" onclick="clearPatientData()">❌ 移除病患</button>
+        </div>
+
+        <div id="patient-upload-zone">
+            <p class="no-data-text">暫無病患資料</p>
+            <div class="upload-box">
+                <label for="patient-file-input" class="upload-btn">📂 讀取診斷書 (JSON)</label>
+                <input type="file" id="patient-file-input" accept=".json" onchange="handlePatientFileUpload(this)"
+                    style="display: none;">
+            </div>
+            <p class="hint-text">或是等待問診系統傳送...</p>
+        </div>
     </div>
     <script src="data.js"></script>
     <script src="script.js"></script>

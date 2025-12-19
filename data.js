@@ -474,7 +474,7 @@ const RecipeDB = [
     {
         nameId: 35, // 三五神丹
         targets: ["XIONG_HUANG", "DAN_SHA"],
-        ratio: [0.5, 2.0],
+        ratio: [2.0, 1.5],
         element: Elements.EARTH,
         yinYang: 2,
         grindTarget: 0.6,

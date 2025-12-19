@@ -98,6 +98,10 @@ let highlightPulse = 0; // 呼吸燈的相位 (0~Math.PI*2)
 let showMapHints = true;
 // ★ 新增：控制是否顯示煉製過程中的即時預覽箭頭 (預設開啟)
 let showPreviewGuide = true;
+
+// ★ 新增：當前病患資料
+let currentPatientData = null;
+
 // --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload
 window.onload = function () {
@@ -112,6 +116,9 @@ window.onload = function () {
         return;
     }
     log("系統啟動完成 (v13.0 Inventory Added)");
+
+    // ★ 新增：檢查是否有外部傳入的病患資料
+    checkPatientData();
 
     loadHistoryFromStorage();
     loadInventoryFromStorage();
@@ -250,7 +257,7 @@ function showGameModeSelection() {
     switchPanel('material-grid');
 
     // 1. 設定容器樣式 (使用 Wrapper 進行垂直排版)
-    grid.className = "mode-selection-wrapper"; 
+    grid.className = "mode-selection-wrapper";
     grid.innerHTML = "";
 
     // --- A. 建立流派按鈕區 (Container) ---
@@ -265,7 +272,7 @@ function showGameModeSelection() {
             <div class="mode-name">${name}</div>
             <div class="mode-desc">${desc}</div>
         `;
-        
+
         btn.onclick = () => {
             earthMode = modeKey;
             currentHistoryTab = modeKey;
@@ -286,7 +293,7 @@ function showGameModeSelection() {
         <input type="checkbox" id="preview-mode-switch" class="preview-toggle-input" ${showPreviewGuide ? 'checked' : ''}>
         <label for="preview-mode-switch" class="preview-toggle-label">開啟羅盤指引 (路徑預覽)</label>
     `;
-    
+
     // 綁定事件
     toggleDiv.querySelector('input').addEventListener('change', (e) => {
         showPreviewGuide = e.target.checked;
@@ -475,7 +482,7 @@ function calculateCurrentPreviewData() {
 
     if (currentStep <= 1 && selectedMatID) {
         m1 = MaterialDB[selectedMatID];
-        w1 = currentWeight > 0 ? currentWeight : 0.1; 
+        w1 = currentWeight > 0 ? currentWeight : 0.1;
         m2 = null; w2 = 0;
     }
     else if (currentStep >= 2 && currentStep <= 3 && potMaterials.length > 0 && selectedMatID) {
@@ -488,8 +495,8 @@ function calculateCurrentPreviewData() {
         m1 = MaterialDB[pm1.id]; w1 = pm1.weight;
         m2 = MaterialDB[pm2.id]; w2 = pm2.weight;
         if (ritualStepIndex === 0) previewGrind = grindProgress / 100;
-        else previewGrind = grindCoefficient > 0 ? grindCoefficient : 0.0; 
-    } 
+        else previewGrind = grindCoefficient > 0 ? grindCoefficient : 0.0;
+    }
     else { return null; }
 
     if (!m1) return null;
@@ -1406,10 +1413,10 @@ async function runResultSequence() {
     // 1. 初始化 UI 狀態
     if (finalContainer) finalContainer.classList.add('hidden');
     if (restartBtn) restartBtn.classList.add('hidden'); // 先隱藏重新按鈕
-    
+
     // 2. ★ 關鍵：先執行計算，取得終點座標 (但不顯示 UI)
     const resultData = await calculateFinalResult();
-    
+
     if (!resultData) {
         console.error("結算失敗");
         return;
@@ -1422,14 +1429,14 @@ async function runResultSequence() {
 
     // 4. ★ 關鍵：同時啟動「地圖動畫」與「文字輪播」
     // 我們使用 Promise.all 讓它們並行執行
-    
+
     if (processText) {
         processText.classList.remove('hidden');
         processText.className = "";
     }
 
     const animationTask = animateSettlement(resultData.playerRes.x, resultData.playerRes.y, totalDuration);
-    
+
     const textTask = (async () => {
         for (let msg of messages) {
             if (processText) processText.textContent = msg;
@@ -1442,7 +1449,7 @@ async function runResultSequence() {
 
     // 5. 動畫結束，顯示結果介面
     if (processText) processText.classList.add('hidden');
-    
+
     if (finalContainer) {
         finalContainer.classList.remove('hidden');
         // 淡入效果
@@ -1450,7 +1457,7 @@ async function runResultSequence() {
         finalContainer.style.transition = "opacity 0.5s";
         requestAnimationFrame(() => finalContainer.style.opacity = 1);
     }
-    
+
     if (restartBtn) restartBtn.classList.remove('hidden');
 
     // 6. 最後定格 (確保地圖狀態正確)
@@ -1461,10 +1468,10 @@ async function runResultSequence() {
 
 async function calculateFinalResult() {
     console.log("[系統] 執行數值結算...");
-    
+
     // 1. 確保預覽箭頭消失 (currentStep=5 時 calculateCurrentPreviewData 回傳 null)
     // 但此時尚未顯示結果面板
-    
+
     const resultID = Math.floor(Math.random() * 9000) + 1000;
     if (potMaterials.length < 2) { log("錯誤：材料不足"); return null; }
 
@@ -1484,7 +1491,7 @@ async function calculateFinalResult() {
     let pMat2 = sortedMats[1];
     let dbMat1 = MaterialDB[pMat1.id];
     let dbMat2 = MaterialDB[pMat2.id];
-    
+
     let playerRes = calculateCoordinate(dbMat1, pMat1.weight, dbMat2, pMat2.weight, grindCoefficient);
 
     // --- 2. 配方篩選 ---
@@ -1527,10 +1534,10 @@ async function calculateFinalResult() {
 
         if (success === 0 && bestRecipe) {
             let dist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
-            if (dist > SLAG_FALLBACK_DISTANCE) { 
-                isSlag = true; 
-                slagReason = "副材料不合且比例相差過大/"; 
-                bestRecipe = null; 
+            if (dist > SLAG_FALLBACK_DISTANCE) {
+                isSlag = true;
+                slagReason = "副材料不合且比例相差過大/";
+                bestRecipe = null;
             }
         }
     }
@@ -1614,10 +1621,10 @@ async function calculateFinalResult() {
     // --- 8. 建立資料物件 ---
     let finalName = isSlag ? "渣滓" : TextDB[bestRecipe.nameId];
     let finalElement = isSlag ? "無" : bestRecipe.element;
-    
+
     let finalYinYang = "無";
     if (!isSlag && bestRecipe && typeof bestRecipe.yinYang === "number") {
-        const yyIndex = bestRecipe.yinYang + 4; 
+        const yyIndex = bestRecipe.yinYang + 4;
         finalYinYang = TextDB[yyIndex] || "未知";
     }
 
@@ -1653,10 +1660,10 @@ async function calculateFinalResult() {
     };
 
     lastResultData = resultData;
-    
+
     // 更新隱藏的 DOM (準備顯示)
-    updateResultUI(resultData); 
-    
+    updateResultUI(resultData);
+
     // 存檔
     saveToHistory(resultData);
     if (!isSlag) {
@@ -2471,7 +2478,7 @@ function toggleMapHints(state) {
     syncMapHintUI();
 
     // 3. 重繪地圖
-    drawRecipeMap(); 
+    drawRecipeMap();
 }
 
 // script.js - 修改 syncMapHintUI
@@ -2517,6 +2524,210 @@ function animateSettlement(targetX, targetY, duration = 1000) {
 
         requestAnimationFrame(loop);
     });
+}
+// script.js - 病患資料處理邏輯
+
+// 1. 檢查資料來源 (URL > LocalStorage)
+function checkPatientData() {
+    console.log("[系統] 檢查病患資料來源...");
+
+    // 優先檢查 URL 參數 (?data=...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlData = urlParams.get('data');
+
+    if (urlData) {
+        try {
+            const decodedData = JSON.parse(decodeURIComponent(urlData));
+            console.log("[系統] 偵測到 URL 病患資料:", decodedData);
+            loadPatientData(decodedData);
+            // (選擇性) 清除網址列參數，避免重新整理後一直存在，視需求而定
+            // window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        } catch (e) {
+            console.error("URL 資料解析失敗:", e);
+        }
+    }
+
+    // 次要檢查 LocalStorage
+    const localData = localStorage.getItem('incoming_patient');
+    if (localData) {
+        try {
+            const parsedData = JSON.parse(localData);
+            console.log("[系統] 偵測到 LocalStorage 病患資料:", parsedData);
+            loadPatientData(parsedData);
+            // 讀取後清除，避免重複讀取舊資料
+            localStorage.removeItem('incoming_patient');
+            return;
+        } catch (e) {
+            console.error("LocalStorage 資料解析失敗:", e);
+        }
+    }
+
+    // 若都無資料，顯示上傳介面
+    renderNoPatientState();
+}
+
+// script.js - 修改 loadPatientData
+
+// script.js - 修改 loadPatientData (支援真實姓名)
+
+function loadPatientData(data) {
+    let patient = {};
+
+    // ★ 判斷是否為新版規範格式 (檢查是否有 diagnosis.truth 結構)
+    if (data.diagnosis && data.diagnosis.truth) {
+        console.log("[系統] 識別為標準診斷書格式 (v" + data.version + ")");
+        
+        const truth = data.diagnosis.truth;
+        
+        // 1. 姓名處理：優先讀取 customerName，若無則退回使用時間戳編號
+        if (truth.customerName) {
+            patient.name = truth.customerName;
+        } else {
+            // Fallback: 取 timestamp 的後幾碼當代號
+            const timeCode = data.timestamp ? data.timestamp.split('T')[1].split('.')[0].replace(/:/g, '') : "Unknown";
+            patient.name = `病患-${timeCode}`;
+        }
+        
+        // 2. 五行屬性
+        patient.element = truth.constitution;
+
+        // 3. 毒素 (目前 / 上限)
+        patient.currentToxin = truth.toxicity.current;
+        patient.maxToxin = truth.toxicity.max;
+        patient.toxinDisplay = `${truth.toxicity.current} / ${truth.toxicity.max}`;
+
+        // 4. 症狀代碼轉換 (A~E -> 1~5)
+        // A=1(水), B=2(火), C=3(土), D=4(木), E=5(金)
+        const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
+        patient.symptoms = [];
+        
+        if (Array.isArray(truth.needs)) {
+            truth.needs.forEach(need => {
+                if (need.code && codeMap[need.code]) {
+                    patient.symptoms.push(codeMap[need.code]);
+                }
+            });
+        }
+
+        patient.notes = "由問診系統自動匯入";
+
+    } else {
+        // ★ 相容舊版簡單格式 (手動測試用)
+        if (!data.element) {
+            alert("匯入失敗：病患資料格式不完整 (缺少必要欄位)");
+            renderNoPatientState();
+            return;
+        }
+        console.log("[系統] 識別為簡易測試格式");
+        patient = data;
+        // 舊版可能只有 maxToxin，做個相容
+        patient.toxinDisplay = data.maxToxin || "未知";
+    }
+
+    currentPatientData = patient;
+    renderPatientInfo(patient);
+}
+
+// script.js - 修改 renderPatientInfo
+
+function renderPatientInfo(data) {
+    const displayZone = document.getElementById('patient-data-display');
+    const uploadZone = document.getElementById('patient-upload-zone');
+    const statusDot = document.getElementById('patient-status-indicator');
+
+    if (displayZone) displayZone.classList.remove('hidden');
+    if (uploadZone) uploadZone.classList.add('hidden');
+    
+    if (statusDot) {
+        statusDot.className = "status-dot green";
+        statusDot.title = "連線中：已載入病患";
+    }
+
+    // 1. 填入基本資料
+    document.getElementById('p-name').textContent = data.name || "未知";
+    
+    const elSpan = document.getElementById('p-element');
+    elSpan.textContent = data.element || "未知";
+    
+    // 根據五行更換顏色
+    if (typeof ElementColors !== 'undefined' && data.element && ElementColors[data.element]) {
+        elSpan.style.color = ElementColors[data.element];
+    }
+
+    // 2. 顯示毒素 (格式: 目前 / 上限)
+    const toxinSpan = document.getElementById('p-max-toxin');
+    // 優先使用處理過的 toxinDisplay，如果沒有則回退到 maxToxin
+    toxinSpan.textContent = data.toxinDisplay || data.maxToxin || "未知";
+
+    document.getElementById('p-notes').textContent = data.notes || "無備註";
+
+    // 3. 處理症狀列表
+    const symList = document.getElementById('p-symptoms-list');
+    symList.innerHTML = "";
+    
+    if (data.symptoms && Array.isArray(data.symptoms) && data.symptoms.length > 0) {
+        data.symptoms.forEach(symId => {
+            let symText = `未知症狀 (${symId})`;
+            
+            // 嘗試從 SymptomsDB 抓取描述
+            if (typeof SymptomsDB !== 'undefined' && SymptomsDB[symId]) {
+                const descId = SymptomsDB[symId].descId;
+                if (typeof TextDB !== 'undefined' && TextDB[descId]) {
+                    symText = TextDB[descId]; // 例如 "安神/安眠"
+                }
+            }
+            
+            const li = document.createElement('li');
+            li.textContent = symText;
+            symList.appendChild(li);
+        });
+    } else {
+        symList.innerHTML = "<li>無明顯症狀</li>";
+    }
+}
+
+// 4. 渲染 UI：無資料狀態
+function renderNoPatientState() {
+    currentPatientData = null;
+    const displayZone = document.getElementById('patient-data-display');
+    const uploadZone = document.getElementById('patient-upload-zone');
+    const statusDot = document.getElementById('patient-status-indicator');
+
+    if (displayZone) displayZone.classList.add('hidden');
+    if (uploadZone) uploadZone.classList.remove('hidden');
+
+    if (statusDot) {
+        statusDot.className = "status-dot red";
+        statusDot.title = "待機中：無病患資料";
+    }
+}
+
+// 5. 手動上傳處理
+function handlePatientFileUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const json = JSON.parse(e.target.result);
+            loadPatientData(json);
+        } catch (err) {
+            alert("檔案解析失敗：請確認上傳的是正確的 JSON 格式");
+            console.error(err);
+        }
+        // 清空 input 讓同一個檔案可以再次觸發 change
+        input.value = '';
+    };
+    reader.readAsText(file);
+}
+
+// 6. 清除資料
+function clearPatientData() {
+    if (confirm("確定要移除目前病患資料嗎？")) {
+        renderNoPatientState();
+    }
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {

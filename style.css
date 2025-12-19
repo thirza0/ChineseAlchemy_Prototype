@@ -1637,3 +1637,128 @@ input[type=range] {
 .preview-toggle-box:hover .preview-toggle-label {
     color: #fff;
 }
+/* style.css - 病患資訊面板樣式 */
+
+.patient-panel {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%); /* 垂直置中 */
+    width: 250px;
+    background-color: rgba(30, 30, 35, 0.95);
+    border: 2px solid #607D8B; /* 藍灰色邊框，區別於煉丹的金黃色 */
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: -5px 5px 20px rgba(0, 0, 0, 0.5);
+    z-index: 1500; /* 確保在最上層 */
+    font-family: "Microsoft JhengHei", sans-serif;
+    color: #e0e0e0;
+    transition: all 0.3s;
+}
+
+/* 標題列 */
+.patient-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.patient-header h3 {
+    margin: 0;
+    color: #90A4AE; /* 淺藍灰 */
+    font-size: 1.1rem;
+}
+
+/* 狀態燈 */
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #555;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+.status-dot.green { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+.status-dot.red { background-color: #e74c3c; }
+
+/* 資料顯示區 */
+.patient-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.patient-row .label { color: #aaa; }
+.patient-row .value { font-weight: bold; }
+.patient-row .value.highlight { color: #d4af37; } /* 五行顏色 */
+.patient-row .value.warn { color: #ff6b6b; }      /* 毒素顏色 */
+
+.separator {
+    border: 0;
+    border-top: 1px dashed #444;
+    margin: 10px 0;
+}
+
+.symptoms-list {
+    list-style: none;
+    padding: 0;
+    margin: 5px 0 15px 0;
+}
+
+.symptoms-list li {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #cfd8dc;
+}
+
+.notes-box {
+    background-color: #222;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #888;
+    min-height: 40px;
+    margin-top: 5px;
+}
+
+/* 移除按鈕 */
+.clear-patient-btn {
+    width: 100%;
+    margin-top: 15px;
+    background: transparent;
+    border: 1px solid #e74c3c;
+    color: #e74c3c;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+.clear-patient-btn:hover { background: #e74c3c; color: white; }
+
+/* 無資料/上傳區 */
+#patient-upload-zone {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.no-data-text { color: #666; margin-bottom: 15px; }
+.hint-text { color: #444; font-size: 0.8rem; margin-top: 10px; }
+
+.upload-btn {
+    display: inline-block;
+    padding: 8px 15px;
+    background-color: #37474F;
+    color: #fff;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border: 1px solid #546E7A;
+    transition: 0.2s;
+}
+.upload-btn:hover { background-color: #455A64; border-color: #78909C; }
