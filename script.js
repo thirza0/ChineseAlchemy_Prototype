@@ -2566,7 +2566,70 @@ function checkPatientData() {
     // 若都無資料，顯示上傳介面
     renderNoPatientState();
 }
+// script.js - 補回缺失的 loadPatientData 函式
 
+function loadPatientData(data) {
+    console.log("[系統] 開始載入病患資料...");
+    let patient = {};
+
+    // ★ 判斷是否為新版規範格式 (檢查是否有 diagnosis.truth 結構)
+    if (data.diagnosis && data.diagnosis.truth) {
+        console.log("[系統] 識別為標準診斷書格式 (v" + data.version + ")");
+        
+        const truth = data.diagnosis.truth;
+        
+        // 1. 姓名處理
+        if (truth.customerName) {
+            patient.name = truth.customerName;
+        } else {
+            // Fallback: 取 timestamp 當代號
+            const timeCode = data.timestamp ? data.timestamp.split('T')[1].split('.')[0].replace(/:/g, '') : "Unknown";
+            patient.name = `病患-${timeCode}`;
+        }
+        
+        // 2. 五行屬性
+        patient.element = truth.constitution;
+
+        // 3. 毒素 (目前 / 上限)
+        patient.currentToxin = truth.toxicity.current;
+        patient.maxToxin = truth.toxicity.max;
+        patient.toxinDisplay = `${truth.toxicity.current} / ${truth.toxicity.max}`;
+
+        // 4. 症狀代碼轉換 (A~E -> 1~5)
+        // A=1(水), B=2(火), C=3(土), D=4(木), E=5(金)
+        const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
+        patient.symptoms = [];
+        
+        if (Array.isArray(truth.needs)) {
+            truth.needs.forEach(need => {
+                if (need.code && codeMap[need.code]) {
+                    patient.symptoms.push(codeMap[need.code]);
+                }
+            });
+        }
+
+        patient.notes = "由問診系統自動匯入";
+
+    } else {
+        // ★ 相容舊版簡單格式 (手動測試或舊資料)
+        if (!data.element) {
+            console.error("載入失敗：缺少必要欄位");
+            alert("匯入失敗：病患資料格式不完整");
+            renderNoPatientState();
+            return;
+        }
+        console.log("[系統] 識別為簡易測試格式");
+        patient = data;
+        // 舊版可能只有 maxToxin
+        patient.toxinDisplay = data.maxToxin || "未知";
+    }
+
+    // 更新全域變數
+    currentPatientData = patient;
+    
+    // 呼叫渲染 UI
+    renderPatientInfo(patient);
+}
 // script.js - checkPatientData (除錯偵探版)
 
 function checkPatientData() {
