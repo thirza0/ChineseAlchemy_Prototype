@@ -2566,49 +2566,54 @@ function checkPatientData() {
     // 若都無資料，顯示上傳介面
     renderNoPatientState();
 }
-// script.js - 補回缺失的 loadPatientData 函式
+// script.js - 修改 loadPatientData (改讀取 diagnosed 診斷結果)
 
 function loadPatientData(data) {
     console.log("[系統] 開始載入病患資料...");
     let patient = {};
 
-    // ★ 判斷是否為新版規範格式 (檢查是否有 diagnosis.truth 結構)
-    if (data.diagnosis && data.diagnosis.truth) {
-        console.log("[系統] 識別為標準診斷書格式 (v" + data.version + ")");
+    // ★ 修改 1：改為檢查並讀取 diagnosis.diagnosed (診斷結果)
+    if (data.diagnosis && data.diagnosis.diagnosed) {
+        console.log("[系統] 讀取診斷結果資料 (diagnosed)");
         
-        const truth = data.diagnosis.truth;
+        // 取得診斷區塊
+        const diagnosed = data.diagnosis.diagnosed;
         
         // 1. 姓名處理
-        if (truth.customerName) {
-            patient.name = truth.customerName;
+        if (diagnosed.customerName) {
+            patient.name = diagnosed.customerName;
         } else {
-            // Fallback: 取 timestamp 當代號
+            // Fallback: 如果診斷沒寫名字，還是抓 timestamp 暫代
             const timeCode = data.timestamp ? data.timestamp.split('T')[1].split('.')[0].replace(/:/g, '') : "Unknown";
             patient.name = `病患-${timeCode}`;
         }
         
-        // 2. 五行屬性
-        patient.element = truth.constitution;
+        // 2. 五行屬性 (讀取診斷的屬性)
+        patient.element = diagnosed.constitution;
 
-        // 3. 毒素 (目前 / 上限)
-        patient.currentToxin = truth.toxicity.current;
-        patient.maxToxin = truth.toxicity.max;
-        patient.toxinDisplay = `${truth.toxicity.current} / ${truth.toxicity.max}`;
+        // 3. 毒素處理 (★ 關鍵修改)
+        // diagnosed 的 toxicity 通常是字串 (如 "微毒")，但也保留對舊格式(物件)的相容性
+        if (typeof diagnosed.toxicity === 'object' && diagnosed.toxicity !== null) {
+            patient.toxinDisplay = `${diagnosed.toxicity.current} / ${diagnosed.toxicity.max}`;
+        } else {
+            // 如果是字串，直接顯示文字
+            patient.toxinDisplay = diagnosed.toxicity || "未知";
+        }
 
         // 4. 症狀代碼轉換 (A~E -> 1~5)
-        // A=1(水), B=2(火), C=3(土), D=4(木), E=5(金)
+        // 邏輯不變，但來源改為 diagnosed.needs
         const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
         patient.symptoms = [];
         
-        if (Array.isArray(truth.needs)) {
-            truth.needs.forEach(need => {
+        if (Array.isArray(diagnosed.needs)) {
+            diagnosed.needs.forEach(need => {
                 if (need.code && codeMap[need.code]) {
                     patient.symptoms.push(codeMap[need.code]);
                 }
             });
         }
 
-        patient.notes = "由問診系統自動匯入";
+        patient.notes = "依據醫師診斷結果顯示";
 
     } else {
         // ★ 相容舊版簡單格式 (手動測試或舊資料)
