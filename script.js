@@ -102,6 +102,11 @@ let showPreviewGuide = true;
 // ★ 新增：當前病患資料
 let currentPatientData = null;
 
+// ★ 新增：暫存選擇的藥品 ID
+let selectedDeliveryIds = [];
+// ★ 請在此填入同事的問診系統網址 (若同資料夾可填相對路徑，如 "diagnosis.html")
+const CLINIC_URL = "https://lindaagilebyte.github.io/Prototype_03/"; // 範例
+
 // --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload
 window.onload = function () {
@@ -2575,10 +2580,10 @@ function loadPatientData(data) {
     // ★ 修改 1：改為檢查並讀取 diagnosis.diagnosed (診斷結果)
     if (data.diagnosis && data.diagnosis.diagnosed) {
         console.log("[系統] 讀取診斷結果資料 (diagnosed)");
-        
+
         // 取得診斷區塊
         const diagnosed = data.diagnosis.diagnosed;
-        
+
         // 1. 姓名處理
         if (diagnosed.customerName) {
             patient.name = diagnosed.customerName;
@@ -2587,7 +2592,7 @@ function loadPatientData(data) {
             const timeCode = data.timestamp ? data.timestamp.split('T')[1].split('.')[0].replace(/:/g, '') : "Unknown";
             patient.name = `病患-${timeCode}`;
         }
-        
+
         // 2. 五行屬性 (讀取診斷的屬性)
         patient.element = diagnosed.constitution;
 
@@ -2604,7 +2609,7 @@ function loadPatientData(data) {
         // 邏輯不變，但來源改為 diagnosed.needs
         const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
         patient.symptoms = [];
-        
+
         if (Array.isArray(diagnosed.needs)) {
             diagnosed.needs.forEach(need => {
                 if (need.code && codeMap[need.code]) {
@@ -2631,7 +2636,7 @@ function loadPatientData(data) {
 
     // 更新全域變數
     currentPatientData = patient;
-    
+
     // 呼叫渲染 UI
     renderPatientInfo(patient);
 }
@@ -2644,14 +2649,14 @@ function checkPatientData() {
 
     // 1. 優先檢查 Hash Payload (#payload=...)
     const hash = window.location.hash.substring(1); // 去掉 #
-    
+
     // ★ 改用更穩健的方式切割，避免 URLSearchParams 自動把 '+' 轉成空白的潛在問題
     let payload = null;
     if (hash.includes('payload=')) {
         // 找到 payload= 的位置，取出後面的所有字串
         const start = hash.indexOf('payload=') + 8;
         payload = hash.substring(start);
-        
+
         // 如果後面還有其他參數(用 & 分隔)，要切掉
         if (payload.includes('&')) {
             payload = payload.split('&')[0];
@@ -2663,7 +2668,7 @@ function checkPatientData() {
     if (payload) {
         try {
             console.log(">> 準備進行 Base64 解碼...");
-            
+
             // A. 格式清洗
             // 1. 把被瀏覽器轉義的 %XX 轉回來 (如果有)
             let base64 = decodeURIComponent(payload);
@@ -2671,7 +2676,7 @@ function checkPatientData() {
             base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
             // 3. 處理可能的空白 (有些瀏覽器會把 URL 中的 + 轉成空白)
             base64 = base64.replace(/ /g, '+');
-            
+
             console.log("4. 清洗後的 Base64:", base64.substring(0, 30) + "...");
 
             // B. 補足 Padding (=)
@@ -2683,7 +2688,7 @@ function checkPatientData() {
 
             // C. 解碼 (處理 UTF-8 中文)
             const rawString = atob(base64);
-            const jsonString = decodeURIComponent(rawString.split('').map(function(c) {
+            const jsonString = decodeURIComponent(rawString.split('').map(function (c) {
                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             }).join(''));
 
@@ -2703,7 +2708,7 @@ function checkPatientData() {
                 console.error("❌ 錯誤: 找不到 loadPatientData 函式！");
                 alert("系統錯誤：找不到載入函式 (loadPatientData)");
             }
-            
+
             console.groupEnd();
             return;
 
@@ -2744,8 +2749,12 @@ function renderPatientInfo(data) {
     const statusDot = document.getElementById('patient-status-indicator');
 
     if (displayZone) displayZone.classList.remove('hidden');
+
+    // ★ 新增：顯示提交按鈕
+    const deliverBtn = document.getElementById('deliver-btn');
+    if (deliverBtn) deliverBtn.classList.remove('hidden');
     if (uploadZone) uploadZone.classList.add('hidden');
-    
+
     if (statusDot) {
         statusDot.className = "status-dot green";
         statusDot.title = "連線中：已載入病患";
@@ -2753,10 +2762,10 @@ function renderPatientInfo(data) {
 
     // 1. 填入基本資料
     document.getElementById('p-name').textContent = data.name || "未知";
-    
+
     const elSpan = document.getElementById('p-element');
     elSpan.textContent = data.element || "未知";
-    
+
     // 根據五行更換顏色
     if (typeof ElementColors !== 'undefined' && data.element && ElementColors[data.element]) {
         elSpan.style.color = ElementColors[data.element];
@@ -2772,11 +2781,11 @@ function renderPatientInfo(data) {
     // 3. 處理症狀列表
     const symList = document.getElementById('p-symptoms-list');
     symList.innerHTML = "";
-    
+
     if (data.symptoms && Array.isArray(data.symptoms) && data.symptoms.length > 0) {
         data.symptoms.forEach(symId => {
             let symText = `未知症狀 (${symId})`;
-            
+
             // 嘗試從 SymptomsDB 抓取描述
             if (typeof SymptomsDB !== 'undefined' && SymptomsDB[symId]) {
                 const descId = SymptomsDB[symId].descId;
@@ -2784,7 +2793,7 @@ function renderPatientInfo(data) {
                     symText = TextDB[descId]; // 例如 "安神/安眠"
                 }
             }
-            
+
             const li = document.createElement('li');
             li.textContent = symText;
             symList.appendChild(li);
@@ -2794,15 +2803,22 @@ function renderPatientInfo(data) {
     }
 }
 
-// 4. 渲染 UI：無資料狀態
+// script.js - 修正後的 renderNoPatientState
+
 function renderNoPatientState() {
     currentPatientData = null;
     const displayZone = document.getElementById('patient-data-display');
     const uploadZone = document.getElementById('patient-upload-zone');
     const statusDot = document.getElementById('patient-status-indicator');
+    
+    // ★ 修正重點：必須這裡宣告 deliverBtn，程式才找得到它
+    const deliverBtn = document.getElementById('deliver-btn'); 
 
     if (displayZone) displayZone.classList.add('hidden');
     if (uploadZone) uploadZone.classList.remove('hidden');
+
+    // 如果按鈕存在，就隱藏它 (因為沒病人不能送藥)
+    if (deliverBtn) deliverBtn.classList.add('hidden');
 
     if (statusDot) {
         statusDot.className = "status-dot red";
@@ -2834,6 +2850,189 @@ function handlePatientFileUpload(input) {
 function clearPatientData() {
     if (confirm("確定要移除目前病患資料嗎？")) {
         renderNoPatientState();
+    }
+}
+// script.js - 藥品交付系統核心邏輯 (v2.0 Fix: UUID & SaveInventory)
+
+// ★ 新增：缺少的存檔輔助函式
+function saveInventory() {
+    localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
+}
+
+// 1. 開啟選藥視窗
+function openDeliveryModal() {
+    if (!currentPatientData) return;
+    
+    const modal = document.getElementById('delivery-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('delivery-patient-name').textContent = currentPatientData.name || "未知病患";
+    
+    // 重置選擇
+    selectedDeliveryIds = [];
+    renderDeliveryList();
+    updateDeliveryUI();
+}
+
+// 2. 關閉視窗
+function closeDeliveryModal() {
+    document.getElementById('delivery-modal').classList.add('hidden');
+    selectedDeliveryIds = [];
+}
+
+// 3. 渲染背包列表 (★ 改用 uuid 解決勾選顯示問題)
+function renderDeliveryList() {
+    const container = document.getElementById('delivery-list-container');
+    container.innerHTML = "";
+
+    if (inventoryStorage.length === 0) {
+        container.innerHTML = `<div style="padding:30px; text-align:center; color:#666;">背包空空如也，請先煉丹。</div>`;
+        return;
+    }
+
+    // 依時間新舊反序排列
+    const list = [...inventoryStorage].reverse();
+
+    list.forEach(item => {
+        const div = document.createElement('div');
+        
+        // ★ 關鍵修改：使用 uuid 進行比對 (字串對字串，絕對精準)
+        const isSelected = selectedDeliveryIds.includes(item.uuid);
+        const isMaxReached = selectedDeliveryIds.length >= 3;
+        
+        // 如果沒被選且已達上限，則禁用
+        const isDisabled = !isSelected && isMaxReached;
+
+        div.className = `delivery-row ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`;
+        
+        const codes = convertEffectToCodes(item.symptoms); 
+
+        // ★ 關鍵修改：傳遞 uuid
+        div.onclick = (e) => {
+            if (e.target.type !== 'checkbox') toggleDeliverySelection(item.uuid);
+        };
+
+        div.innerHTML = `
+            <div style="display:flex; justify-content:center;">
+                <input type="checkbox" class="delivery-checkbox" ${isSelected ? 'checked' : ''} 
+                    ${isDisabled ? 'disabled' : ''} onchange="toggleDeliverySelection('${item.uuid}')">
+            </div>
+            <div style="color: #fff;">${item.name}</div>
+            <div style="color: ${getGradeColor(item.quality)}; font-weight:bold;">${item.quality}</div>
+            <div style="color: ${ElementColors[item.element] || '#ccc'};">${item.element}</div>
+            <div style="font-family: monospace; color: #aaa;">${codes}</div>
+            <div style="color: ${item.toxin > 50 ? '#ff6b6b' : '#888'};">${item.toxin}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// 4. 切換選擇狀態 (使用 uuid)
+function toggleDeliverySelection(uuid) {
+    const index = selectedDeliveryIds.indexOf(uuid);
+    
+    if (index > -1) {
+        // 取消選取
+        selectedDeliveryIds.splice(index, 1);
+    } else {
+        // 新增選取 (檢查上限)
+        if (selectedDeliveryIds.length < 3) {
+            selectedDeliveryIds.push(uuid);
+        }
+    }
+    renderDeliveryList(); // 重繪以更新 UI
+    updateDeliveryUI();
+}
+
+// 5. 更新 UI 狀態 (計數與按鈕)
+function updateDeliveryUI() {
+    const count = selectedDeliveryIds.length;
+    document.getElementById('delivery-count').textContent = `已選：${count} / 3`;
+    
+    // 更新外部按鈕文字
+    const mainBtn = document.getElementById('deliver-btn');
+    if(mainBtn) mainBtn.textContent = `💊 提交丹藥 (${count}/3)`;
+
+    const confirmBtn = document.getElementById('confirm-delivery-btn');
+    if (count > 0) {
+        confirmBtn.classList.remove('disabled');
+        confirmBtn.disabled = false;
+    } else {
+        confirmBtn.classList.add('disabled');
+        confirmBtn.disabled = true;
+    }
+}
+
+// 6. 輔助：將症狀 ID 轉為 A-E 代碼
+function convertEffectToCodes(symptoms) {
+    if (!symptoms || !Array.isArray(symptoms)) return "無";
+    const map = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E' };
+    let codes = symptoms.map(s => map[s] || '?');
+    return codes.join(', ');
+}
+
+// ★★★ 7. 提交丹藥 (核心傳送邏輯 - 防呆修正版) ★★★
+function submitMedicinesToClinic() {
+    if (selectedDeliveryIds.length === 0) return;
+    if (!confirm(`確定要提交這 ${selectedDeliveryIds.length} 顆丹藥嗎？\n(提交後將從背包移除)`)) return;
+
+    // A. 抓取選定的藥品資料
+    const medicinesToSend = inventoryStorage
+        // ★ 改用 uuid 過濾
+        .filter(item => selectedDeliveryIds.includes(item.uuid))
+        .map(item => {
+            // ★ 防呆：確保 symptoms 是陣列
+            const safeSymptoms = Array.isArray(item.symptoms) ? item.symptoms : [];
+
+            return {
+                id: item.id,
+                name: item.name,
+                element: item.element,
+                quality: item.quality,
+                toxin: item.toxin,
+                effectCodes: safeSymptoms.map(s => {
+                    const map = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E' };
+                    return map[s] || null;
+                }).filter(c => c !== null)
+            };
+        });
+
+    // B. 建立 Payload
+    const payloadObj = {
+        source: "AlchemySystem",
+        patientName: currentPatientData ? currentPatientData.name : "未知病患",
+        timestamp: new Date().toISOString(),
+        medicines: medicinesToSend
+    };
+
+    console.log("[系統] 準備傳送 Payload:", payloadObj);
+
+    // C. 刪除本地庫存
+    // ★ 改用 uuid 過濾刪除
+    inventoryStorage = inventoryStorage.filter(item => !selectedDeliveryIds.includes(item.uuid));
+    
+    saveInventory(); // ★ 這裡呼叫現在已經定義好的函式
+    renderInventory(); 
+    closeDeliveryModal();
+    if(currentPatientData) renderPatientInfo(currentPatientData); 
+
+    // D. Base64 編碼與跳轉
+    try {
+        const jsonStr = JSON.stringify(payloadObj);
+        const utf8Bytes = encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g,
+            function(match, p1) {
+                return String.fromCharCode('0x' + p1);
+            });
+        let base64 = btoa(utf8Bytes);
+        base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        
+        const targetUrl = `${CLINIC_URL}#payload=${base64}`;
+        
+        console.log("[系統] 跳轉目標:", targetUrl);
+        window.location.href = targetUrl;
+
+    } catch (e) {
+        console.error("傳送失敗:", e);
+        alert("資料打包發生錯誤，請查看 Console。");
     }
 }
 // 修改：使用共用的清除邏輯

@@ -182,24 +182,26 @@ body {
     background-color: #2c2c35;
     border: 1px solid #555;
     color: #e0e0e0;
-    
+
     /* ★ 改為 Flex 佈局，讓內容垂直置中 */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    
+
     /* ★ 設定固定高度，確保滑動空間一致 */
-    height: 100px; 
+    height: 100px;
     padding: 10px;
-    
+
     cursor: pointer;
     border-radius: 4px;
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 彈性動態曲線 */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    /* 彈性動態曲線 */
     text-align: center;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     position: relative;
-    overflow: hidden; /* ★ 關鍵：隱藏超出範圍的內容 */
+    overflow: hidden;
+    /* ★ 關鍵：隱藏超出範圍的內容 */
 }
 
 .mat-btn:hover {
@@ -234,10 +236,12 @@ body {
     line-height: 1.4;
     opacity: 0;
     max-height: 0;
-    transform: translateY(20px); /* 初始位置稍微往下 */
+    transform: translateY(20px);
+    /* 初始位置稍微往下 */
     transition: all 0.3s ease;
     margin-top: 0;
-    color: #333; /* hover 後背景變亮，字體改深色 */
+    color: #333;
+    /* hover 後背景變亮，字體改深色 */
 }
 
 /* ★★★ 互動邏輯：Hover 時觸發 ★★★ */
@@ -248,8 +252,10 @@ body {
 
 .mat-btn:hover .mat-info-slide {
     opacity: 1;
-    max-height: 50px; /* 給予足夠高度展開 */
-    transform: translateY(0); /* 回到原位 */
+    max-height: 50px;
+    /* 給予足夠高度展開 */
+    transform: translateY(0);
+    /* 回到原位 */
     margin-top: 5px;
 }
 
@@ -336,13 +342,13 @@ body {
 }
 
 /* 修改 Slider 樣式以置中 */
-#weight-slider { 
-    width: 80%; 
+#weight-slider {
+    width: 80%;
     /* 關鍵修改：上下 20px，左右 auto (自動置中) */
-    margin: 20px auto; 
-    accent-color: #d4af37; 
+    margin: 20px auto;
+    accent-color: #d4af37;
     /* 確保它是區塊元素，margin: auto 才會生效 */
-    display: block; 
+    display: block;
     cursor: pointer;
 }
 
@@ -437,7 +443,7 @@ body {
 }
 
 .slider-container {
-    
+
     width: 60%;
 }
 
@@ -702,6 +708,7 @@ input[type=range] {
     border: 1px solid #d4af37;
     cursor: pointer;
 }
+
 /* =========================================
    ★ 新增：地圖圖例樣式 (Legend Overlay)
    ========================================= */
@@ -709,11 +716,13 @@ input[type=range] {
     position: absolute;
     top: 10px;
     left: 10px;
-    background-color: rgba(0, 0, 0, 0.7); /* 半透明黑底，避免擋住太死 */
+    background-color: rgba(0, 0, 0, 0.7);
+    /* 半透明黑底，避免擋住太死 */
     border: 1px solid #444;
     border-radius: 4px;
     padding: 8px;
-    pointer-events: none; /* 關鍵！讓滑鼠可以直接穿透圖例去拖曳地圖 */
+    pointer-events: none;
+    /* 關鍵！讓滑鼠可以直接穿透圖例去拖曳地圖 */
     z-index: 20;
     display: flex;
     flex-direction: column;
@@ -724,7 +733,8 @@ input[type=range] {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.75rem; /* 字體縮小一點以免佔空間 */
+    font-size: 0.75rem;
+    /* 字體縮小一點以免佔空間 */
     color: #ccc;
     font-family: "Microsoft JhengHei", sans-serif;
 }
@@ -749,9 +759,9 @@ input[type=range] {
 
 /* 1. 丹 (本次)：白底金邊 */
 .icon-dan {
-  background-color: #ffffff;
-  border: 2px solid #d4af37;
-  border-radius: 50%;
+    background-color: #ffffff;
+    border: 2px solid #d4af37;
+    border-radius: 50%;
 }
 
 
@@ -766,22 +776,23 @@ input[type=range] {
 
 /* 3. 實線：深灰實線 (模擬 script.js 的 rgba(50,50,50,0.8)) */
 .line-solid {
-    width: 20px; /* 線條稍微長一點 */
+    width: 20px;
+    /* 線條稍微長一點 */
     height: 2px;
-    background-color: #666; 
-    margin-top: 6px; /* 垂直置中微調 */
+    background-color: #666;
+    margin-top: 6px;
+    /* 垂直置中微調 */
 }
 
 /* 4. 虛線：金色虛線 (模擬 script.js 的 dashed line) */
 .line-dashed {
-  width: 18px;
-  height: 2px;
-  background: repeating-linear-gradient(
-    to right,
-    #d4af37 0 4px,
-    transparent 4px 8px
-  );
+    width: 18px;
+    height: 2px;
+    background: repeating-linear-gradient(to right,
+            #d4af37 0 4px,
+            transparent 4px 8px);
 }
+
 .icon-dan::after {
     content: "丹";
     font-size: 0.6rem;
@@ -866,6 +877,7 @@ input[type=range] {
     align-items: center;
     backdrop-filter: blur(5px);
 }
+
 /* style.css - 修改與新增 */
 
 /* =========================================
@@ -875,15 +887,19 @@ input[type=range] {
 .instruction-content {
     /* 改用深藍色系漸層背景，增加科技/修真感 */
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
-    border: 1px solid #4ecca3 !important; /* 青綠色邊框 */
+    border: 1px solid #4ecca3 !important;
+    /* 青綠色邊框 */
     box-shadow: 0 0 30px rgba(78, 204, 163, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.5);
-    height: 550px !important; /* 稍微加高一點給美化排版空間 */
+    height: 550px !important;
+    /* 稍微加高一點給美化排版空間 */
     max-height: 85vh;
 }
 
 #instruction-body {
-    background-color: transparent; /* 讓父層漸層透出來 */
-    padding: 10px 25px !important; /* 調整內距 */
+    background-color: transparent;
+    /* 讓父層漸層透出來 */
+    padding: 10px 25px !important;
+    /* 調整內距 */
 }
 
 /* --- 新增：內部 HTML 結構樣式 --- */
@@ -899,17 +915,20 @@ input[type=range] {
 .rule-list li {
     display: flex;
     align-items: flex-start;
-    background-color: rgba(255, 255, 255, 0.05); /* 半透明底 */
+    background-color: rgba(255, 255, 255, 0.05);
+    /* 半透明底 */
     margin-bottom: 12px;
     padding: 12px;
     border-radius: 6px;
-    border-left: 3px solid #3d4a66; /* 預設深色邊條 */
+    border-left: 3px solid #3d4a66;
+    /* 預設深色邊條 */
     transition: all 0.2s;
 }
 
 .rule-list li:hover {
     background-color: rgba(255, 255, 255, 0.1);
-    border-left-color: #4ecca3; /* hover 時變亮 */
+    border-left-color: #4ecca3;
+    /* hover 時變亮 */
     transform: translateX(5px);
 }
 
@@ -918,7 +937,8 @@ input[type=range] {
     font-family: 'Consolas', monospace;
     font-size: 1.2rem;
     font-weight: bold;
-    color: #4ecca3; /* 青色 */
+    color: #4ecca3;
+    /* 青色 */
     margin-right: 15px;
     opacity: 0.8;
 }
@@ -932,19 +952,22 @@ input[type=range] {
 
 /* 關鍵字高亮 */
 .highlight {
-    color: #d4af37; /* 金色 */
+    color: #d4af37;
+    /* 金色 */
     font-weight: bold;
 }
 
 /* 警告文字 (剋制/毒素) */
 .warn {
-    color: #ff6b6b; /* 紅色 */
+    color: #ff6b6b;
+    /* 紅色 */
     font-weight: bold;
 }
 
 /* 正面文字 (生助/療效) */
 .good {
-    color: #4cd137; /* 綠色 */
+    color: #4cd137;
+    /* 綠色 */
     font-weight: bold;
 }
 
@@ -1354,6 +1377,7 @@ input[type=range] {
         opacity: 1;
     }
 }
+
 /* style.css - 新增地圖遮罩樣式 */
 
 /* 遮罩層本體 */
@@ -1363,12 +1387,15 @@ input[type=range] {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(18, 18, 18, 0.85); /* 深灰半透明 */
-    backdrop-filter: blur(2px); /* 輕微模糊背景，增加質感 */
+    background-color: rgba(18, 18, 18, 0.85);
+    /* 深灰半透明 */
+    backdrop-filter: blur(2px);
+    /* 輕微模糊背景，增加質感 */
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 100; /* 確保蓋在 Canvas 上 */
+    z-index: 100;
+    /* 確保蓋在 Canvas 上 */
     border-radius: 4px;
     transition: opacity 0.3s ease;
 }
@@ -1390,8 +1417,10 @@ input[type=range] {
 /* 隱藏遮罩用的 class */
 .map-lock-overlay.hidden {
     opacity: 0;
-    pointer-events: none; /* 隱藏後不阻擋滑鼠點擊 */
+    pointer-events: none;
+    /* 隱藏後不阻擋滑鼠點擊 */
 }
+
 /* --- 左上角選單容器 (取代舊的 history-btn-container) --- */
 #menu-container {
     position: absolute;
@@ -1508,15 +1537,19 @@ input[type=range] {
     justify-content: space-between;
     font-size: 0.95rem;
     color: #ccc;
-    cursor: pointer; /* ★ 變為手指游標 */
-    transition: all 0.2s; /* ★ 平滑過渡 */
+    cursor: pointer;
+    /* ★ 變為手指游標 */
+    transition: all 0.2s;
+    /* ★ 平滑過渡 */
 }
 
 /* ★ 新增：懸停效果 (強調它是按鈕) */
 .effect-recipe-row:hover {
     background-color: #333;
-    color: #d4af37; /* 金色文字 */
-    padding-left: 20px; /* 微微右移 */
+    color: #d4af37;
+    /* 金色文字 */
+    padding-left: 20px;
+    /* 微微右移 */
 }
 
 .effect-recipe-row:active {
@@ -1543,7 +1576,8 @@ input[type=range] {
 /* 2. 修正 h1 樣式：移除預設 margin 避免排版跑掉 */
 .panel-header h1 {
     margin: 0;
-    font-size: 1.5rem; /* 依您原本的大小調整 */
+    font-size: 1.5rem;
+    /* 依您原本的大小調整 */
 }
 
 /* 3. 問號按鈕樣式 */
@@ -1561,7 +1595,8 @@ input[type=range] {
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    flex-shrink: 0; /* 防止被擠壓 */
+    flex-shrink: 0;
+    /* 防止被擠壓 */
 }
 
 .mode-info-btn:hover {
@@ -1574,19 +1609,23 @@ input[type=range] {
 .hidden {
     display: none !important;
 }
+
 /* style.css - 新增預覽模式切換開關樣式 */
 
 /* style.css - 修正排版問題 */
 
 /* ★ 修改：提高權重 (#id.class) 並強制使用 flex */
 #material-grid.mode-selection-wrapper {
-    display: flex !important;       /* ★ 強制覆蓋原本的 grid */
-    flex-direction: column;         /* ★ 強制垂直排列 */
+    display: flex !important;
+    /* ★ 強制覆蓋原本的 grid */
+    flex-direction: column;
+    /* ★ 強制垂直排列 */
     align-items: center;
     justify-content: center;
     width: 100%;
     height: 100%;
-    gap: 20px;                      /* 上下間距 */
+    gap: 20px;
+    /* 上下間距 */
 }
 
 /* 2. 流派按鈕容器 */
@@ -1609,7 +1648,7 @@ input[type=range] {
     gap: 12px;
     transition: all 0.3s;
     /* margin-top: 10px; <-- 這行也可以拿掉，交給 gap 控制 */
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .preview-toggle-box:hover {
@@ -1637,20 +1676,24 @@ input[type=range] {
 .preview-toggle-box:hover .preview-toggle-label {
     color: #fff;
 }
+
 /* style.css - 病患資訊面板樣式 */
 
 .patient-panel {
     position: fixed;
     right: 20px;
     top: 50%;
-    transform: translateY(-50%); /* 垂直置中 */
+    transform: translateY(-50%);
+    /* 垂直置中 */
     width: 250px;
     background-color: rgba(30, 30, 35, 0.95);
-    border: 2px solid #607D8B; /* 藍灰色邊框，區別於煉丹的金黃色 */
+    border: 2px solid #607D8B;
+    /* 藍灰色邊框，區別於煉丹的金黃色 */
     border-radius: 10px;
     padding: 15px;
     box-shadow: -5px 5px 20px rgba(0, 0, 0, 0.5);
-    z-index: 1500; /* 確保在最上層 */
+    z-index: 1500;
+    /* 確保在最上層 */
     font-family: "Microsoft JhengHei", sans-serif;
     color: #e0e0e0;
     transition: all 0.3s;
@@ -1668,7 +1711,8 @@ input[type=range] {
 
 .patient-header h3 {
     margin: 0;
-    color: #90A4AE; /* 淺藍灰 */
+    color: #90A4AE;
+    /* 淺藍灰 */
     font-size: 1.1rem;
 }
 
@@ -1678,10 +1722,17 @@ input[type=range] {
     height: 10px;
     border-radius: 50%;
     background-color: #555;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
-.status-dot.green { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
-.status-dot.red { background-color: #e74c3c; }
+
+.status-dot.green {
+    background-color: #2ecc71;
+    box-shadow: 0 0 8px #2ecc71;
+}
+
+.status-dot.red {
+    background-color: #e74c3c;
+}
 
 /* 資料顯示區 */
 .patient-row {
@@ -1691,10 +1742,24 @@ input[type=range] {
     font-size: 0.95rem;
 }
 
-.patient-row .label { color: #aaa; }
-.patient-row .value { font-weight: bold; }
-.patient-row .value.highlight { color: #d4af37; } /* 五行顏色 */
-.patient-row .value.warn { color: #ff6b6b; }      /* 毒素顏色 */
+.patient-row .label {
+    color: #aaa;
+}
+
+.patient-row .value {
+    font-weight: bold;
+}
+
+.patient-row .value.highlight {
+    color: #d4af37;
+}
+
+/* 五行顏色 */
+.patient-row .value.warn {
+    color: #ff6b6b;
+}
+
+/* 毒素顏色 */
 
 .separator {
     border: 0;
@@ -1739,7 +1804,11 @@ input[type=range] {
     border-radius: 4px;
     transition: 0.2s;
 }
-.clear-patient-btn:hover { background: #e74c3c; color: white; }
+
+.clear-patient-btn:hover {
+    background: #e74c3c;
+    color: white;
+}
 
 /* 無資料/上傳區 */
 #patient-upload-zone {
@@ -1747,8 +1816,16 @@ input[type=range] {
     padding: 10px 0;
 }
 
-.no-data-text { color: #666; margin-bottom: 15px; }
-.hint-text { color: #444; font-size: 0.8rem; margin-top: 10px; }
+.no-data-text {
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.hint-text {
+    color: #444;
+    font-size: 0.8rem;
+    margin-top: 10px;
+}
 
 .upload-btn {
     display: inline-block;
@@ -1761,4 +1838,84 @@ input[type=range] {
     border: 1px solid #546E7A;
     transition: 0.2s;
 }
-.upload-btn:hover { background-color: #455A64; border-color: #78909C; }
+
+.upload-btn:hover {
+    background-color: #455A64;
+    border-color: #78909C;
+}
+
+/* style.css - 藥品交付系統樣式 */
+
+/* 1. 面板上的提交按鈕 */
+.deliver-btn {
+    width: 100%;
+    margin-top: 15px;
+    background: linear-gradient(to bottom, #d4af37, #b49020);
+    /* 金色漸層 */
+    border: 1px solid #f1c40f;
+    color: #1a1a1a;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    margin-bottom: 10px;
+    /* 與移除按鈕隔開 */
+}
+
+.deliver-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 10px rgba(212, 175, 55, 0.4);
+    filter: brightness(1.1);
+}
+
+.deliver-btn:active {
+    transform: translateY(0);
+}
+
+/* 2. 選藥列表項目 */
+.delivery-row {
+    display: grid;
+    grid-template-columns: 50px 2fr 1fr 1fr 2fr 1fr;
+    /* 與 Header 對齊 */
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    transition: background 0.2s;
+    color: #ccc;
+}
+
+.delivery-row:hover {
+    background-color: #2a2a2a;
+}
+
+.delivery-row.selected {
+    background-color: rgba(212, 175, 55, 0.15);
+    border-left: 3px solid #d4af37;
+}
+
+.delivery-row.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+/* Checkbox 樣式 */
+.delivery-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #d4af37;
+}
+
+/* 3. 按鈕禁用狀態 */
+.action-btn.disabled {
+    background: #444;
+    color: #888;
+    border-color: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+}
