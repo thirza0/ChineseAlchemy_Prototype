@@ -155,16 +155,26 @@ try {
                 const msgString = message.toString();
                 const payload = JSON.parse(msgString);
 
-                // 過濾掉自己發出的
-                if (payload.source !== 'AlchemySystem') {
-                    console.log("📡 [MQTT] 收到外部資料");
+                // 1. 過濾掉自己發出的訊息
+                if (payload.source === 'AlchemySystem') return;
 
-                    // 確保格式相容性 (有些 payload 直接是病患，有些包在 patientData 裡)
-                    const patientData = payload.patientData || payload;
+                console.log("📡 [MQTT] 收到外部資料:", payload);
 
-                    // ★ 呼叫處理函式，標記來源為 MQTT
-                    handleIncomingPatientData(patientData, 'MQTT');
+                // ★★★ 新增：優先攔截測試訊息 ★★★
+                // 如果對方說這是測試 (test: true)，或者只是一則純文字訊息
+                if (payload.test === true || (payload.message && !payload.diagnosis && !payload.patientData)) {
+                    console.log("🧪 [系統] 收到測試訊號");
+                    alert(`💬 來自醫館的訊息：\n\n${payload.message}`);
+                    return; // 處理完就結束，不往下走去掛號
                 }
+
+                // 2. 如果不是測試，才當作病患資料處理
+                // 這裡相容兩種格式：包在 patientData 裡面的，或是整包就是資料的
+                const patientData = payload.patientData || payload.data || payload; 
+                
+                // 交給掛號處處理
+                handleIncomingPatientData(patientData, 'MQTT');
+
             } catch (e) {
                 console.warn("[MQTT] 解析失敗:", e);
             }
