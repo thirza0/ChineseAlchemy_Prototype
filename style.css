@@ -33,11 +33,6 @@ body {
     position: relative;
 }
 
-/* 通用隱藏 */
-.hidden {
-    display: none !important;
-}
-
 /* =========================================
    2. 抬頭顯示器 (HUD / Header)
    ========================================= */
@@ -257,14 +252,6 @@ body {
     transform: translateY(0);
     /* 回到原位 */
     margin-top: 5px;
-}
-
-/* 流派選擇 */
-.mode-selection-container {
-    display: flex !important;
-    justify-content: center;
-    gap: 30px;
-    width: 100%;
 }
 
 .mode-btn {
@@ -549,27 +536,7 @@ input[type=range] {
     color: #fff;
 }
 
-/* --- 儀式面板 --- */
-#pot-status {
-    background: #151515;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    width: 50%;
-    border: 1px dashed #444;
-}
 
-#pot-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    color: #bbb;
-}
-
-#pot-list li {
-    padding: 5px 0;
-    border-bottom: 1px solid #222;
-}
 
 /* 進度條容器 */
 #grind-container,
@@ -1016,19 +983,7 @@ input[type=range] {
     animation: fadeIn 0.3s;
 }
 
-.modal-header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #444;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #252530;
-}
 
-.modal-header h2 {
-    margin: 0;
-    color: #d4af37;
-}
 
 .close-btn {
     font-size: 2rem;
@@ -1045,29 +1000,6 @@ input[type=range] {
     padding: 20px;
     overflow-y: auto;
     flex: 1;
-}
-
-/* 手風琴樣式 */
-.history-item {
-    margin-bottom: 10px;
-    border: 1px solid #444;
-    border-radius: 5px;
-    background-color: #1a1a1a;
-    overflow: hidden;
-    transition: background-color 0.2s;
-}
-
-.history-summary {
-    padding: 15px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #252530;
-}
-
-.history-summary:hover {
-    background-color: #333340;
 }
 
 .history-header-left {

@@ -118,16 +118,50 @@ const broadcastChannel = new BroadcastChannel('alchemy_clinic_channel');
 const MQTT_TOPIC = 'thirza/alchemy/v1'; 
 let mqttClient = null;
 
-// 初始化 MQTT 連線 (網頁載入時就嘗試連線，以免切換時要等)
 try {
-    // 使用 HiveMQ 公開測試主機 (WebSockets SSL)
-    mqttClient = mqtt.connect('wss://broker.hivemq.com:8000/mqtt');
+    // ★★★ 修正 1：Port 請改為 8884 (WSS 加密連線專用) ★★★
+    // 原本是 8000，但在 HTTPS 網頁下會連不上
+    mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
     
     mqttClient.on('connect', () => {
         console.log("[MQTT] 連線成功！Topic:", MQTT_TOPIC);
         updateMqttStatusUI(true);
+
+        // ★★★ 修正 2：連線成功後，立刻訂閱頻道 (Subscribe) ★★★
+        // 這樣伺服器才知道要把這個頻道的訊息轉發給您
+        mqttClient.subscribe(MQTT_TOPIC, (err) => {
+            if (!err) {
+                console.log(`[MQTT] 已訂閱頻道: ${MQTT_TOPIC}，等待訊息中...`);
+            }
+        });
     });
     
+    // ★★★ 修正 3：加入監聽訊息的事件 (Receiver) ★★★
+    mqttClient.on('message', (topic, message) => {
+        // 確保收到的訊息是來自我們訂閱的頻道
+        if (topic === MQTT_TOPIC) {
+            try {
+                // 將 Buffer 轉為字串並解析 JSON
+                const msgString = message.toString();
+                const payload = JSON.parse(msgString);
+                
+                console.log("📡 [MQTT] 收到訊息:", payload);
+
+                // 過濾掉自己發出的訊息 (如果需要的話)
+                // 這裡假設同事發來的 source 是 'clinic'
+                if (payload.source === 'clinic') {
+                    alert(`收到醫館傳來的測試訊號！\n內容: ${JSON.stringify(payload)}`);
+                    
+                    // TODO: 未來可以在這裡寫「自動載入病患資料」的邏輯
+                    // if (payload.patientData) loadPatientData(payload.patientData);
+                }
+
+            } catch (e) {
+                console.warn("[MQTT] 收到非 JSON 格式訊息:", message.toString());
+            }
+        }
+    });
+
     mqttClient.on('error', (err) => {
         console.error("[MQTT] 連線錯誤:", err);
         updateMqttStatusUI(false);
