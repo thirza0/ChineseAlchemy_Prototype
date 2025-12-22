@@ -457,16 +457,14 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
     let rawMag1 = m1.max * effectiveRate * (w1 / totalW);
     let rawMag2 = m2.max * effectiveRate * (w2 / totalW);
 
-    // 2. ★★★ 新增：同屬性共鳴加成 (Resonance Bonus) ★★★
+    // ★★★ 新增：同屬性共鳴加成 (Resonance Bonus) ★★★
     let resonanceBonus = 1.0;
     
-    // 條件：屬性相同，且不是「全」屬性 (全屬性通常是特殊的，不參與簡單疊加)
-    if (m1.element === m2.element && m1.element !== Elements.ALL) {
-        // --- 共鳴公式設計 ---
-        // 這裡採用：基礎 1.0 + (總重量 * 0.1)
-        // 意思每投入 1g 的總重量，推力就增加 10%
-        // 例如：雲母 5g + 白石英 2g = 7g -> Bonus = 1.0 + 0.7 = 1.7倍
-        // 原本平均力道約 1.0，乘上 1.7 後變成 1.7，成功突破上限。
+    // 修改判斷條件：
+    // 1. 屬性相同
+    // 2. 不是全屬性
+    // 3. ★ 新增：次要材料重量必須大於 0 (避免單一材料預覽時誤觸發)
+    if (m1.element === m2.element && m1.element !== Elements.ALL && w2 > 0) {
         resonanceBonus = 1.0 + (totalW * 0.1); 
     }
 
