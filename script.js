@@ -120,6 +120,18 @@ let mqttClient = null;
 
 try {
     // ★★★ 修正 1：Port 請改為 8884 (WSS 加密連線專用) ★★★
+    // ↓↓↓ 把這段塞在 mqtt.connect 上面 ↓↓↓
+    console.log("🚩 [1] 程式碼活著！準備執行連線...");
+
+    try {
+        // 你的連線程式碼
+        mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+
+        // ↓↓↓ 把這段塞在 mqtt.connect 下面 ↓↓↓
+        console.log("🚩 [2] 連線指令已發出！");
+    } catch (e) {
+        console.error("🚩 [錯誤] 發生慘案：", e);
+    }
     // ✅修正後 (可連線):
     mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
@@ -137,27 +149,27 @@ try {
     });
     // [修正後] script.js - 放在 mqttClient.on('connect') 之後
 
-mqttClient.on('message', (topic, message) => {
-    if (topic === MQTT_TOPIC) {
-        try {
-            const msgString = message.toString();
-            const payload = JSON.parse(msgString);
+    mqttClient.on('message', (topic, message) => {
+        if (topic === MQTT_TOPIC) {
+            try {
+                const msgString = message.toString();
+                const payload = JSON.parse(msgString);
 
-            // 過濾掉自己發出的
-            if (payload.source !== 'AlchemySystem') {
-                console.log("📡 [MQTT] 收到外部資料");
+                // 過濾掉自己發出的
+                if (payload.source !== 'AlchemySystem') {
+                    console.log("📡 [MQTT] 收到外部資料");
 
-                // 確保格式相容性 (有些 payload 直接是病患，有些包在 patientData 裡)
-                const patientData = payload.patientData || payload; 
+                    // 確保格式相容性 (有些 payload 直接是病患，有些包在 patientData 裡)
+                    const patientData = payload.patientData || payload;
 
-                // ★ 呼叫處理函式，標記來源為 MQTT
-                handleIncomingPatientData(patientData, 'MQTT');
+                    // ★ 呼叫處理函式，標記來源為 MQTT
+                    handleIncomingPatientData(patientData, 'MQTT');
+                }
+            } catch (e) {
+                console.warn("[MQTT] 解析失敗:", e);
             }
-        } catch (e) {
-            console.warn("[MQTT] 解析失敗:", e);
         }
-    }
-});
+    });
 
     mqttClient.on('error', (err) => {
         console.error("[MQTT] 連線錯誤:", err);
@@ -2711,7 +2723,7 @@ function handleIncomingPatientData(newData, sourceName) {
     // 2. 取得新舊資料的關鍵特徵 (用名字或 Timestamp 來比對是否為同一份)
     // 這裡我們抓取「名字」作為主要識別，你可以根據需求改抓 ID
     const newName = newData.diagnosis?.diagnosed?.customerName || newData.customerName || "未知";
-    
+
     // 判斷當前是否已經有病患資料
     const hasExistingData = currentPatientData !== null;
     const oldName = hasExistingData ? currentPatientData.name : "";
@@ -2728,15 +2740,15 @@ function handleIncomingPatientData(newData, sourceName) {
     // 這裡避免了「URL 載入張三，MQTT 又推播張三」導致的無意義彈窗
     if (oldName === newName) {
         console.log(`[系統] 偵測到相同病患 (${newName})，忽略此次更新。`);
-        return; 
+        return;
     }
 
     // --- 情況 C：資料不同，需要決定如何處理 ---
-    
+
     // ★ 關鍵邏輯：判斷是否為「網頁剛載入」階段 (例如啟動後 3 秒內)
     // 如果是剛開網頁，MQTT 的資料權重 > URL，直接覆蓋不囉嗦
     const systemUpTime = performance.now(); // 取得網頁已執行時間 (毫秒)
-    const isStartupPhase = systemUpTime < 3000; 
+    const isStartupPhase = systemUpTime < 3000;
 
     if (sourceName === 'MQTT' && isStartupPhase) {
         console.log("[系統] 啟動階段收到 MQTT 資料，優先權高於 URL，自動覆蓋。");
@@ -2745,7 +2757,7 @@ function handleIncomingPatientData(newData, sourceName) {
     } else {
         // --- 情況 D：遊戲中途收到新資料 -> 禮貌詢問 ---
         const confirmMsg = `⚠️ 收到新的病患資料！\n\n來源：${sourceName}\n新病患：${newName}\n\n目前正在診治：${oldName}\n\n請問要「覆蓋」目前的資料嗎？`;
-        
+
         if (confirm(confirmMsg)) {
             console.log("[系統] 玩家確認覆蓋資料。");
             loadPatientData(newData);
@@ -2883,7 +2895,7 @@ function checkPatientData() {
 
             // ★★★ 修改重點：交給統一入口處理，標記來源為 URL ★★★
             handleIncomingPatientData(decodedData, 'URL');
-            
+
             console.groupEnd();
             return; // 找到就結束，不繼續往下找
 
@@ -2903,10 +2915,10 @@ function checkPatientData() {
         try {
             console.log(">> 偵測到 ?data= 參數");
             const decodedData = JSON.parse(decodeURIComponent(urlData));
-            
+
             // ★★★ 修改重點：交給統一入口處理，標記來源為 URL ★★★
             handleIncomingPatientData(decodedData, 'URL');
-            
+
             console.groupEnd();
             return; // 找到就結束
         } catch (e) {
@@ -2922,13 +2934,13 @@ function checkPatientData() {
         try {
             console.log(">> 偵測到 LocalStorage 資料");
             const parsedData = JSON.parse(localData);
-            
+
             // 讀取後清除，避免下次重整又讀到舊的
             localStorage.removeItem('incoming_patient');
 
             // ★★★ 修改重點：交給統一入口處理，標記來源為 LocalStorage ★★★
             handleIncomingPatientData(parsedData, 'LocalStorage');
-            
+
             console.groupEnd();
             return;
         } catch (e) {
