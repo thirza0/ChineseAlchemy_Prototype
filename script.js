@@ -170,8 +170,8 @@ try {
 
                 // 2. 如果不是測試，才當作病患資料處理
                 // 這裡相容兩種格式：包在 patientData 裡面的，或是整包就是資料的
-                const patientData = payload.patientData || payload.data || payload; 
-                
+                const patientData = payload.patientData || payload.data || payload;
+
                 // 交給掛號處處理
                 handleIncomingPatientData(patientData, 'MQTT');
 
@@ -1612,10 +1612,10 @@ async function calculateFinalResult() {
 
     // 1. 確保預覽箭頭消失 (currentStep=5 時 calculateCurrentPreviewData 回傳 null)
     // 但此時尚未顯示結果面板
+    // ✅ 修改後：使用防撞號生成器
+    const resultID = generateUniqueBatchID();
 
-    const resultID = Math.floor(Math.random() * 9000) + 1000;
     if (potMaterials.length < 2) { log("錯誤：材料不足"); return null; }
-
     // 備份資料
     if (lastResultData) {
         previousResultData = lastResultData;
@@ -2125,15 +2125,16 @@ function switchHistoryTab(tab) {
 }
 
 
+// script.js - 修改後的 renderHistory
+
 function renderHistory() {
     const container = document.getElementById('history-list-container');
     container.innerHTML = "";
 
-    // ★★★ [關鍵修正] 讀取 currentHistoryTab (選中的頁籤)，而不是 earthMode (當前遊戲) ★★★
+    // 讀取 currentHistoryTab
     const list = historyStorage[currentHistoryTab] || [];
 
     if (list.length === 0) {
-        // 顯示流派名稱，讓玩家知道現在看的是哪一個
         let modeName = currentHistoryTab === 'NEUTRAL' ? '中和流' : (currentHistoryTab === 'EXTEND' ? '延伸流' : '偏性流');
         container.innerHTML = `<p style="text-align:center; color:#888; margin-top:20px;">【${modeName}】暫無煉丹紀錄</p>`;
         return;
@@ -2147,6 +2148,18 @@ function renderHistory() {
 
         const sym = item.symptoms || "無";
         const reac = item.reaction || "無";
+
+        // ★★★ 新增邏輯：判斷是否顯示再製按鈕 (非 D 級且非渣滓) ★★★
+        let regenerateBtnHtml = '';
+        if (item.quality !== 'D' && item.name !== '渣滓') {
+            regenerateBtnHtml = `
+                <div class="history-action-bar">
+                    <button class="btn-regenerate" onclick="regenerateItemFromHistory(${index}, event)">
+                        🔄 提取配方 (生成丹藥)
+                    </button>
+                </div>
+            `;
+        }
 
         div.innerHTML = `
             <div class="history-summary" onclick="this.parentElement.classList.toggle('open'); let d=this.nextElementSibling; d.style.display = d.style.display==='none'?'block':'none';">
@@ -2164,14 +2177,13 @@ function renderHistory() {
             <div class="history-details" style="display:none;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                     <div style="display:flex; justify-content:space-between;">
-                <span>
-                    五行：
-                    <span style="color:${colors[item.element] || '#ccc'}; font-weight:bold;">
-                        ${item.element}
-                    </span>
-                </span>
-            </div>
-
+                        <span>
+                            五行：
+                            <span style="color:${colors[item.element] || '#ccc'}; font-weight:bold;">
+                                ${item.element}
+                            </span>
+                        </span>
+                    </div>
                     <span>偏差：${item.deviation}</span>
                 </div>
                 <p><strong>陰陽：${item.yinYang || "無"}</p>
@@ -2196,6 +2208,9 @@ function renderHistory() {
                 <div style="margin-top:8px; padding:5px; background:rgba(64, 224, 208, 0.1); border-left:2px solid #40E0D0; color:#40E0D0;">
                     <strong>💡 建議：</strong>${item.advice}
                 </div>
+
+                ${regenerateBtnHtml}
+
             </div>
         `;
         container.appendChild(div);
@@ -3331,6 +3346,75 @@ function openClinicWindow() {
     // 3. 開啟新視窗
     // 'ClinicWindow' 是視窗名稱，再次點擊時會聚焦在同一個視窗，不會一直開新的
     window.open(clinicPath, 'ClinicWindow', windowFeatures);
+}
+// script.js - 新增函式：從歷史紀錄再製丹藥
+
+function regenerateItemFromHistory(index, event) {
+    // 阻止事件冒泡，避免觸發手風琴收合
+    if (event) event.stopPropagation();
+
+    // 1. 取得當前頁籤的列表
+    const list = historyStorage[currentHistoryTab] || [];
+    const item = list[index];
+
+    if (!item) {
+        console.error("找不到該筆紀錄");
+        return;
+    }
+
+    // 2. 防呆檢查：渣滓不能再製
+    if (item.quality === 'D' || item.name === '渣滓') {
+        alert("無法再製渣滓！");
+        return;
+    }
+    
+    // 建立新物件
+    const newItem = {
+        ...item,
+        // ✅ 修改後：使用防撞號生成器，確保這個新批號也是全場唯一的
+        id: generateUniqueBatchID() 
+    };
+    // 呼叫存檔 (saveToInventory 會再幫它加 UUID，雙重保險)
+    saveToInventory(newItem);
+
+    console.log(`✨ 已再製【${newItem.name}】，新批號 ID: ${newItem.id}`);
+    alert(`✨ 已成功再製【${newItem.name}】(ID: ${newItem.id})！`);
+
+    // (選用) 如果想要再製後直接打開背包給玩家看，可以解開下面這行
+    toggleInventoryModal();
+}
+// script.js - 新增：唯一 ID 生成器 (防撞號)
+
+function generateUniqueBatchID() {
+    // 1. 收集目前所有已存在的 ID (跨流派檢查)
+    const existingIds = new Set();
+
+    // 遍歷所有流派的紀錄
+    ['NEUTRAL', 'EXTEND', 'BIAS'].forEach(mode => {
+        if (historyStorage[mode]) {
+            historyStorage[mode].forEach(item => existingIds.add(item.id));
+        }
+    });
+
+    let newId;
+    let isDuplicate = true;
+    let safeGuard = 0; // 安全閥，避免運氣太差無窮迴圈
+
+    // 2. 迴圈檢查
+    while (isDuplicate && safeGuard < 1000) {
+        newId = Math.floor(Math.random() * 9000) + 1000; // 產生 1000~9999
+
+        if (!existingIds.has(newId)) {
+            isDuplicate = false; // 沒重複，通過！
+        }
+        safeGuard++;
+    }
+
+    if (safeGuard >= 1000) {
+        console.warn("ID 池已近枯竭或運氣極差，強制回傳非唯一 ID");
+    }
+
+    return newId;
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {
