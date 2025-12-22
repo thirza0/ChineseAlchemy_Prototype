@@ -2034,3 +2034,71 @@ input[type=range] {
     opacity: 0;
     pointer-events: none;
 }
+/* style.css - 新增傳輸模式切換樣式 */
+
+.transmission-selector {
+    display: flex;
+    background-color: #111;
+    border-bottom: 1px solid #444;
+}
+
+.trans-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px;
+    cursor: pointer;
+    border-right: 1px solid #333;
+    transition: all 0.2s;
+    opacity: 0.6;
+    position: relative; /* 為了定位紅點 */
+}
+
+.trans-option:last-child {
+    border-right: none;
+}
+
+.trans-option:hover {
+    background-color: #222;
+    opacity: 0.8;
+}
+
+/* 選中狀態 */
+.trans-option.active {
+    background-color: #2c3e50; /* 深藍底 */
+    opacity: 1;
+    border-bottom: 3px solid #d4af37; /* 金色底線 */
+}
+
+.trans-option .icon {
+    font-size: 1.5rem;
+}
+
+.trans-option .label {
+    font-size: 0.9rem;
+    line-height: 1.2;
+    text-align: left;
+    color: #ddd;
+}
+
+.trans-option .label small {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+/* MQTT 狀態燈微調 */
+#mqtt-status-dot {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+}
+/* style.css - 醫館按鈕專屬樣式 */
+#open-clinic-btn:hover {
+    background-color: #009688 !important; /* 醫館青 */
+    color: white !important;
+    box-shadow: 0 0 15px rgba(0, 150, 136, 0.6);
+}

@@ -1,0 +1,219 @@
+/* Clinic_Sim/style.css */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f0f4f3; /* 淺灰綠背景 */
+    color: #333;
+    font-family: "Microsoft JhengHei", sans-serif;
+    display: flex;
+    justify-content: center;
+    height: 100vh;
+}
+
+.clinic-container {
+    width: 800px;
+    background: #fff;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    margin: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background-color: #009688; /* 醫館青 */
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+h1 { margin: 0; font-size: 1.5rem; }
+
+.status-online { color: #ccff90; font-weight: bold; }
+
+main {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+/* 桌面狀態 */
+.empty-desk {
+    text-align: center;
+    padding: 50px;
+    color: #aaa;
+    border: 3px dashed #ddd;
+    border-radius: 10px;
+}
+.empty-desk .hint { font-size: 0.9rem; margin-top: 10px; }
+
+/* 藥品卡片 */
+.medicine-package {
+    background: #e0f2f1;
+    border-left: 5px solid #009688;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    animation: slideIn 0.5s ease;
+}
+
+.package-header {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #b2dfdb;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    color: #00796b;
+    font-weight: bold;
+}
+
+.med-item {
+    background: #fff;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+}
+
+.med-tag {
+    background: #eee;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-left: 5px;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+/* Clinic_Sim/style.css - 歷史紀錄手風琴樣式 */
+
+/* 列表項目容器 */
+.history-entry {
+    list-style: none;
+    background: #fff;
+    margin-bottom: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* 標題列 (可點擊) */
+.history-header {
+    padding: 12px 15px;
+    background: #f9f9f9;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.history-header:hover {
+    background: #f0f0f0;
+}
+
+.history-header.active {
+    background: #e0f2f1; /* 展開時變淺青色 */
+    border-bottom: 1px solid #ddd;
+}
+
+/* 時間標籤 */
+.time-tag {
+    font-family: monospace;
+    background: #eee;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #666;
+    margin-right: 8px;
+    font-size: 0.85rem;
+}
+
+.patient-name {
+    font-weight: bold;
+    color: #00796b;
+}
+
+.med-count {
+    font-size: 0.9rem;
+    color: #888;
+    margin-right: 10px;
+}
+
+/* 詳細內容區 */
+.history-body {
+    padding: 10px 15px;
+    background: #fff;
+}
+
+/* 單顆藥品列 */
+.med-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+.med-row:last-child {
+    border-bottom: none;
+}
+
+/* 品質標籤 (動態顏色) */
+.quality-badge {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-right: 8px;
+    background: #999; /* 預設 */
+}
+
+/* 針對不同品質上色 */
+.quality-badge[data-q="S"] { background: #FFD700; color: #5a4a00; }
+.quality-badge[data-q="A"] { background: #4CAF50; }
+.quality-badge[data-q="B"] { background: #2196F3; }
+.quality-badge[data-q="C"] { background: #FF9800; }
+.quality-badge[data-q="D"] { background: #555; }
+
+.med-info {
+    font-size: 0.9rem;
+    color: #666;
+}
+/* Clinic_Sim/style.css - 新增症狀標籤樣式 */
+
+.med-symptoms {
+    margin-top: 4px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.sym-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    color: #555;
+    margin-right: 5px;
+    font-family: "Microsoft JhengHei", sans-serif;
+}
+
+/* (選用) 針對不同屬性給一點微弱的背景色 */
+.sym-tag.code-A { background-color: #e3f2fd; border-color: #90caf9; color: #1565c0; } /* 水 */
+.sym-tag.code-B { background-color: #ffebee; border-color: #ef9a9a; color: #c62828; } /* 火 */
+.sym-tag.code-C { background-color: #fff8e1; border-color: #ffe082; color: #f57f17; } /* 土 */
+.sym-tag.code-D { background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; } /* 木 */
+.sym-tag.code-E { background-color: #f5f5f5; border-color: #bdbdbd; color: #616161; } /* 金 */

@@ -10,6 +10,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>GIT_煉丹系統Prototype</title>
         <link rel="stylesheet" href="style.css">
+        <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     </head>
     <div id="history-modal" class="hidden">
         <div class="modal-content">
@@ -301,6 +302,13 @@
     </div>
     </div>
     <div id="right-toolbar">
+        <div class="tooltip-container">
+            <button id="open-clinic-btn" class="tool-btn" onclick="openClinicWindow()"
+                style="border-color: #009688; color: #009688;">
+                🏥
+            </button>
+            <span class="tooltip-text">開啟醫館</span>
+        </div>
         <button id="toggle-patient-btn" class="tool-btn" onclick="togglePatientPanel()" title="顯示/隱藏病歷">
             📋
         </button>
@@ -360,44 +368,61 @@
             <p class="hint-text">或是等待問診系統傳送...</p>
         </div>
     </div>
-    <div id="delivery-modal" class="modal hidden">
-        <div class="modal-content" style="width: 800px; max-width: 95%;">
-            <div class="modal-header">
-                <h2>📦 選擇丹藥提交</h2>
-                <span class="close-btn" onclick="closeDeliveryModal()">×</span>
+    <div class="modal-body" style="padding: 0;">
+
+        <div class="transmission-selector">
+            <div class="trans-option active" onclick="setTransmissionMode('BROADCAST', this)">
+                <span class="icon">📡</span>
+                <span class="label">近距離廣播<br><small>(同一台電腦)</small></span>
             </div>
-
-            <div class="modal-body" style="padding: 0;">
-                <div
-                    style="padding: 15px; background: #2a2a2a; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;">
-                    <span>請選擇 <strong>1~3</strong> 種丹藥給 <span id="delivery-patient-name"
-                            style="color: #d4af37;">---</span>：</span>
-                    <span id="delivery-count" style="font-weight: bold; color: #aaa;">已選：0 / 3</span>
-                </div>
-
-                <div class="delivery-list-header"
-                    style="display: grid; grid-template-columns: 50px 2fr 1fr 1fr 2fr 1fr; padding: 10px 15px; background: #222; color: #888; font-size: 0.9rem; font-weight: bold;">
-                    <div>選取</div>
-                    <div>藥名</div>
-                    <div>品質</div>
-                    <div>五行</div>
-                    <div>對應代碼 (療效)</div>
-                    <div>毒素</div>
-                </div>
-
-                <div id="delivery-list-container" style="height: 400px; overflow-y: auto; background: #1a1a1a;">
-                </div>
-            </div>
-
-            <div class="modal-footer" style="justify-content: space-between;">
-                <div style="color: #666; font-size: 0.85rem;">※ 提交後，選定的丹藥將從背包中移除。</div>
-                <button id="confirm-delivery-btn" class="action-btn disabled" onclick="submitMedicinesToClinic()">🏥
-                    拿去醫館</button>
+            <div class="trans-option" onclick="setTransmissionMode('MQTT', this)">
+                <span class="icon">☁️</span>
+                <span class="label">雲端傳送陣<br><small>(跨電腦/遠端)</small></span>
+                <span id="mqtt-status-dot" class="status-dot red" title="未連線"></span>
             </div>
         </div>
-    </div>
-    <script src="data.js"></script>
-    <script src="script.js"></script>
+
+        <div
+            style="padding: 15px; background: #2a2a2a; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;">
+            <div id="delivery-modal" class="modal hidden">
+                <div class="modal-content" style="width: 800px; max-width: 95%;">
+                    <div class="modal-header">
+                        <h2>📦 選擇丹藥提交</h2>
+                        <span class="close-btn" onclick="closeDeliveryModal()">×</span>
+                    </div>
+
+                    <div class="modal-body" style="padding: 0;">
+                        <div
+                            style="padding: 15px; background: #2a2a2a; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;">
+                            <span>請選擇 <strong>1~3</strong> 種丹藥給 <span id="delivery-patient-name"
+                                    style="color: #d4af37;">---</span>：</span>
+                            <span id="delivery-count" style="font-weight: bold; color: #aaa;">已選：0 / 3</span>
+                        </div>
+
+                        <div class="delivery-list-header"
+                            style="display: grid; grid-template-columns: 50px 2fr 1fr 1fr 2fr 1fr; padding: 10px 15px; background: #222; color: #888; font-size: 0.9rem; font-weight: bold;">
+                            <div>選取</div>
+                            <div>藥名</div>
+                            <div>品質</div>
+                            <div>五行</div>
+                            <div>對應代碼 (療效)</div>
+                            <div>毒素</div>
+                        </div>
+
+                        <div id="delivery-list-container" style="height: 400px; overflow-y: auto; background: #1a1a1a;">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="justify-content: space-between;">
+                        <div style="color: #666; font-size: 0.85rem;">※ 提交後，選定的丹藥將從背包中移除。</div>
+                        <button id="confirm-delivery-btn" class="action-btn disabled"
+                            onclick="submitMedicinesToClinic()">🏥
+                            拿去醫館</button>
+                    </div>
+                </div>
+            </div>
+            <script src="data.js"></script>
+            <script src="script.js"></script>
 </body>
 
 </html>

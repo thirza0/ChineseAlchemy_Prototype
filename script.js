@@ -107,6 +107,57 @@ let selectedDeliveryIds = [];
 // ★ 請在此填入同事的問診系統網址 (若同資料夾可填相對路徑，如 "diagnosis.html")
 const CLINIC_URL = "https://lindaagilebyte.github.io/Prototype_03/"; // 範例
 
+// script.js - 全域變數區新增
+
+// --- 通訊設定 ---
+let transmissionMode = 'BROADCAST'; // 預設模式: 'BROADCAST' or 'MQTT'
+const broadcastChannel = new BroadcastChannel('alchemy_clinic_channel');
+
+// MQTT 設定
+// ★請設定一個獨特的 Topic 名稱，避免跟別人在公用伺服器撞頻
+const MQTT_TOPIC = 'thirza/alchemy/v1'; 
+let mqttClient = null;
+
+// 初始化 MQTT 連線 (網頁載入時就嘗試連線，以免切換時要等)
+try {
+    // 使用 HiveMQ 公開測試主機 (WebSockets SSL)
+    mqttClient = mqtt.connect('wss://broker.hivemq.com:8000/mqtt');
+    
+    mqttClient.on('connect', () => {
+        console.log("[MQTT] 連線成功！Topic:", MQTT_TOPIC);
+        updateMqttStatusUI(true);
+    });
+    
+    mqttClient.on('error', (err) => {
+        console.error("[MQTT] 連線錯誤:", err);
+        updateMqttStatusUI(false);
+    });
+    
+    mqttClient.on('offline', () => {
+        updateMqttStatusUI(false);
+    });
+
+} catch (e) {
+    console.warn("MQTT 初始化失敗 (可能未引入函式庫):", e);
+}
+
+function updateMqttStatusUI(isOnline) {
+    const dot = document.getElementById('mqtt-status-dot');
+    if (dot) {
+        dot.className = isOnline ? "status-dot green" : "status-dot red";
+        dot.title = isOnline ? "雲端已連線" : "雲端斷線中";
+    }
+}
+// script.js - 切換傳輸模式 UI
+function setTransmissionMode(mode, element) {
+    transmissionMode = mode;
+    
+    // UI 更新
+    document.querySelectorAll('.trans-option').forEach(el => el.classList.remove('active'));
+    element.classList.add('active');
+    
+    console.log(`[系統] 切換傳輸模式為: ${mode}`);
+}
 // --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload
 window.onload = function () {
@@ -3010,31 +3061,28 @@ function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
 
-// ... (openDeliveryModal, closeDeliveryModal, renderDeliveryList 等函式保持不變，不用動) ...
+// script.js - 修正後的提交函式 (雙模版)
 
-// ★★★ 修改後的提交函式 ★★★
 function submitMedicinesToClinic() {
     if (selectedDeliveryIds.length === 0) return;
     
-    // 再次確認玩家意圖
-    if (!confirm(`確定要透過【傳送陣】提交這 ${selectedDeliveryIds.length} 顆丹藥嗎？\n(提交後將從背包移除，且不會跳轉頁面)`)) return;
+    // 判斷模式文字
+    const modeText = transmissionMode === 'BROADCAST' ? '【近距離廣播】' : '【雲端傳送陣】';
+    
+    // 再次確認
+    if (!confirm(`確定要透過 ${modeText} 提交這 ${selectedDeliveryIds.length} 顆丹藥嗎？`)) return;
 
-    // A. 準備資料 (跟之前一樣)
+    // A. 準備資料
     const medicinesToSend = inventoryStorage
         .filter(item => selectedDeliveryIds.includes(item.uuid))
         .map(item => {
-            // ★★★ 修正重點：改抓 symptomIds (原始ID陣列) ★★★
-            // 因為 item.symptoms 現在存的是中文 "安神、止痛"，不能拿來 map
-            // 為了相容舊資料，如果沒有 symptomIds 就給空陣列
             const rawSymptoms = Array.isArray(item.symptomIds) ? item.symptomIds : [];
-
             return {
                 id: item.id,
                 name: item.name,
                 element: item.element,
                 quality: item.quality,
                 toxin: item.toxin,
-                // 使用原始 ID 陣列來轉換代碼
                 effectCodes: rawSymptoms.map(s => {
                     const map = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E' };
                     return map[s] || null;
@@ -3050,10 +3098,23 @@ function submitMedicinesToClinic() {
         medicines: medicinesToSend
     };
 
-    console.log("[系統] 透過廣播頻道發送:", payloadObj);
+    console.log(`[系統] 準備發送 (${transmissionMode}):`, payloadObj);
 
-    // ★★★ C. 核心修改：使用廣播發送，而不是跳轉 ★★★
-    clinicChannel.postMessage(payloadObj);
+    // ★★★ C. 核心分流邏輯 ★★★
+    if (transmissionMode === 'BROADCAST') {
+        // 模式 1: 廣播
+        broadcastChannel.postMessage(payloadObj);
+        alert("✨ [廣播] 丹藥已送達隔壁分頁！");
+    } else {
+        // 模式 2: MQTT
+        if (mqttClient && mqttClient.connected) {
+            mqttClient.publish(MQTT_TOPIC, JSON.stringify(payloadObj));
+            alert("✨ [雲端] 丹藥已飛向遠方伺服器！");
+        } else {
+            alert("⚠️ 雲端連線尚未建立，無法傳送！請檢查網路或稍後再試。");
+            return; // 中斷，不刪除背包物品
+        }
+    }
 
     // D. 刪除本地庫存 & 更新 UI
     inventoryStorage = inventoryStorage.filter(item => !selectedDeliveryIds.includes(item.uuid));
@@ -3061,15 +3122,6 @@ function submitMedicinesToClinic() {
     renderInventory();
     closeDeliveryModal();
     if(currentPatientData) renderPatientInfo(currentPatientData);
-
-    // E. 顯示成功訊息 (取代跳轉)
-    alert("✨ 丹藥已透過傳送陣送達醫館！\n\n請切換至「問診系統」分頁查看結果。");
-    
-    // (保留舊的 Base64 邏輯在註解中，以備不時之需，但不再執行)
-    /* const jsonStr = JSON.stringify(payloadObj);
-    ...
-    window.location.href = targetUrl; 
-    */
 }
 // script.js - 切換病歷面板顯示/隱藏
 function togglePatientPanel() {
@@ -3120,6 +3172,22 @@ function resetAllSystemData() {
 
     // 4. 強制重整頁面以套用變更
     window.location.reload();
+}
+// script.js - 新增函式
+
+function openClinicWindow() {
+    // 1. 設定醫館的路徑
+    // 如果您的資料夾名稱不是 'clinic'，請修改這裡
+    const clinicPath = 'Prototype_test/index.html'; 
+    
+    // 2. 設定視窗參數
+    // width/height: 視窗大小
+    // left/top: 視窗出現的位置 (設為 0 盡量靠左上，方便您把主視窗移到右邊)
+    const windowFeatures = "width=1000,height=800,left=0,top=0,menubar=no,toolbar=no,location=no,status=no";
+
+    // 3. 開啟新視窗
+    // 'ClinicWindow' 是視窗名稱，再次點擊時會聚焦在同一個視窗，不會一直開新的
+    window.open(clinicPath, 'ClinicWindow', windowFeatures);
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {

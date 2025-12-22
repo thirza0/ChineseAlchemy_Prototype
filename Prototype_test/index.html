@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>問診系統 (接收端模擬)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="clinic-container">
+        <header>
+            <h1>🏥 平安醫館 - 問診台</h1>
+            <div class="status-bar">
+                <span>連線狀態：</span>
+                <span id="connection-status" class="status-online">● 廣播頻道監聽中</span>
+            </div>
+        </header>
+
+        <main>
+            <div id="reception-desk" class="empty-desk">
+                <p>桌面目前是空的...</p>
+                <p class="hint">請在「煉丹系統」提交丹藥，這裡會自動接收。</p>
+            </div>
+
+            <div id="log-area" class="log-box hidden">
+                <h3>📜 接收紀錄</h3>
+                <ul id="log-list"></ul>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    </body>
+</html>
