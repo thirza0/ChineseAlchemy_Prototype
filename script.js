@@ -135,32 +135,29 @@ try {
             }
         });
     });
+    // [修正後] script.js - 放在 mqttClient.on('connect') 之後
 
-    // ★★★ 修正 3：加入監聽訊息的事件 (Receiver) ★★★
-    mqttClient.on('message', (topic, message) => {
-        // 確保收到的訊息是來自我們訂閱的頻道
-        if (topic === MQTT_TOPIC) {
-            try {
-                // 將 Buffer 轉為字串並解析 JSON
-                const msgString = message.toString();
-                const payload = JSON.parse(msgString);
+mqttClient.on('message', (topic, message) => {
+    if (topic === MQTT_TOPIC) {
+        try {
+            const msgString = message.toString();
+            const payload = JSON.parse(msgString);
 
-                console.log("📡 [MQTT] 收到訊息:", payload);
+            // 過濾掉自己發出的
+            if (payload.source !== 'AlchemySystem') {
+                console.log("📡 [MQTT] 收到外部資料");
 
-                // 過濾掉自己發出的訊息 (如果需要的話)
-                // 這裡假設同事發來的 source 是 'clinic'
-                if (payload.source === 'clinic') {
-                    alert(`收到醫館傳來的測試訊號！\n內容: ${JSON.stringify(payload)}`);
+                // 確保格式相容性 (有些 payload 直接是病患，有些包在 patientData 裡)
+                const patientData = payload.patientData || payload; 
 
-                    // TODO: 未來可以在這裡寫「自動載入病患資料」的邏輯
-                    // if (payload.patientData) loadPatientData(payload.patientData);
-                }
-
-            } catch (e) {
-                console.warn("[MQTT] 收到非 JSON 格式訊息:", message.toString());
+                // ★ 呼叫處理函式，標記來源為 MQTT
+                handleIncomingPatientData(patientData, 'MQTT');
             }
+        } catch (e) {
+            console.warn("[MQTT] 解析失敗:", e);
         }
-    });
+    }
+});
 
     mqttClient.on('error', (err) => {
         console.error("[MQTT] 連線錯誤:", err);
@@ -2656,7 +2653,7 @@ function animateSettlement(targetX, targetY, duration = 1000) {
 
 // 1. 檢查資料來源 (URL > LocalStorage)
 function checkPatientData() {
-    console.log("[系統] 檢查病患資料來源...");
+    console.group("🔍 [系統診斷] 開始檢查靜態病患資料 (URL/Local)...");
 
     // 優先檢查 URL 參數 (?data=...)
     const urlParams = new URLSearchParams(window.location.search);
@@ -2689,9 +2686,73 @@ function checkPatientData() {
             console.error("LocalStorage 資料解析失敗:", e);
         }
     }
-
+    // 如果最後都沒找到
+    console.log(">> 靜態檢查結束，等待 MQTT 連線...");
+    console.groupEnd();
     // 若都無資料，顯示上傳介面
+
     renderNoPatientState();
+}
+// [修正後] script.js - 智慧型資料處理中心
+/**
+ * 處理新進來的病患資料 (統一入口)
+ * @param {Object} newData - 新收到的 JSON 資料
+ * @param {String} sourceName - 來源名稱 ('MQTT', 'URL', 'Manual')
+ */
+function handleIncomingPatientData(newData, sourceName) {
+    console.log(`[系統] 收到來自【${sourceName}】的資料，進行比對...`);
+
+    // 1. 防呆：如果資料無效，直接忽略
+    if (!newData || (!newData.element && !newData.diagnosis)) {
+        console.warn("[系統] 資料格式錯誤，忽略此請求。");
+        return;
+    }
+
+    // 2. 取得新舊資料的關鍵特徵 (用名字或 Timestamp 來比對是否為同一份)
+    // 這裡我們抓取「名字」作為主要識別，你可以根據需求改抓 ID
+    const newName = newData.diagnosis?.diagnosed?.customerName || newData.customerName || "未知";
+    
+    // 判斷當前是否已經有病患資料
+    const hasExistingData = currentPatientData !== null;
+    const oldName = hasExistingData ? currentPatientData.name : "";
+
+    // --- 情況 A：目前完全沒資料 ---
+    if (!hasExistingData) {
+        console.log("[系統] 目前無病患，直接載入。");
+        loadPatientData(newData);
+        if (sourceName === 'MQTT') log(`✨ 已自動同步雲端病患資料`);
+        return;
+    }
+
+    // --- 情況 B：資料完全一樣 (重複收到) ---
+    // 這裡避免了「URL 載入張三，MQTT 又推播張三」導致的無意義彈窗
+    if (oldName === newName) {
+        console.log(`[系統] 偵測到相同病患 (${newName})，忽略此次更新。`);
+        return; 
+    }
+
+    // --- 情況 C：資料不同，需要決定如何處理 ---
+    
+    // ★ 關鍵邏輯：判斷是否為「網頁剛載入」階段 (例如啟動後 3 秒內)
+    // 如果是剛開網頁，MQTT 的資料權重 > URL，直接覆蓋不囉嗦
+    const systemUpTime = performance.now(); // 取得網頁已執行時間 (毫秒)
+    const isStartupPhase = systemUpTime < 3000; 
+
+    if (sourceName === 'MQTT' && isStartupPhase) {
+        console.log("[系統] 啟動階段收到 MQTT 資料，優先權高於 URL，自動覆蓋。");
+        loadPatientData(newData);
+        log(`✨ 已將病患資料更新為雲端最新版本`);
+    } else {
+        // --- 情況 D：遊戲中途收到新資料 -> 禮貌詢問 ---
+        const confirmMsg = `⚠️ 收到新的病患資料！\n\n來源：${sourceName}\n新病患：${newName}\n\n目前正在診治：${oldName}\n\n請問要「覆蓋」目前的資料嗎？`;
+        
+        if (confirm(confirmMsg)) {
+            console.log("[系統] 玩家確認覆蓋資料。");
+            loadPatientData(newData);
+        } else {
+            console.log("[系統] 玩家拒絕覆蓋。");
+        }
+    }
 }
 // script.js - 修改 loadPatientData (改讀取 diagnosed 診斷結果)
 
@@ -2768,17 +2829,19 @@ function loadPatientData(data) {
     if (panel) panel.classList.remove('hidden');
     if (btn) btn.classList.add('active');
 }
-// script.js - checkPatientData (除錯偵探版)
+// [修正後] script.js - 靜態資料檢查 (URL / LocalStorage)
+// 邏輯變更：找到資料後，不再直接 loadPatientData，而是交給 handleIncomingPatientData 統一處理
 
 function checkPatientData() {
-    console.group("🔍 [系統診斷] 開始檢查病患資料...");
+    console.group("🔍 [系統診斷] 開始檢查靜態病患資料...");
     console.log("1. 當前完整 URL:", window.location.href);
     console.log("2. 當前 Hash 值:", window.location.hash);
 
+    // ==========================================
     // 1. 優先檢查 Hash Payload (#payload=...)
+    // ==========================================
     const hash = window.location.hash.substring(1); // 去掉 #
 
-    // ★ 改用更穩健的方式切割，避免 URLSearchParams 自動把 '+' 轉成空白的潛在問題
     let payload = null;
     if (hash.includes('payload=')) {
         // 找到 payload= 的位置，取出後面的所有字串
@@ -2791,28 +2854,22 @@ function checkPatientData() {
         }
     }
 
-    console.log("3. 擷取到的 Payload 原始字串:", payload ? (payload.substring(0, 30) + "...") : "無");
-
     if (payload) {
         try {
-            console.log(">> 準備進行 Base64 解碼...");
+            console.log(">> 偵測到 Hash Payload，準備解碼...");
 
             // A. 格式清洗
-            // 1. 把被瀏覽器轉義的 %XX 轉回來 (如果有)
+            // 1. 把被瀏覽器轉義的 %XX 轉回來
             let base64 = decodeURIComponent(payload);
             // 2. 處理 URL Safe Base64: '-' -> '+', '_' -> '/'
             base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
-            // 3. 處理可能的空白 (有些瀏覽器會把 URL 中的 + 轉成空白)
+            // 3. 處理可能的空白
             base64 = base64.replace(/ /g, '+');
 
-            console.log("4. 清洗後的 Base64:", base64.substring(0, 30) + "...");
-
             // B. 補足 Padding (=)
-            // Base64 長度必須是 4 的倍數
             while (base64.length % 4) {
                 base64 += '=';
             }
-            console.log("5. 補足 Padding 後長度:", base64.length);
 
             // C. 解碼 (處理 UTF-8 中文)
             const rawString = atob(base64);
@@ -2820,36 +2877,25 @@ function checkPatientData() {
                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             }).join(''));
 
-            console.log("6. 解碼成功，JSON 字串:", jsonString.substring(0, 50) + "...");
-
             // D. 轉成物件
             const decodedData = JSON.parse(jsonString);
-            console.log("7. JSON Parse 成功! 資料物件:", decodedData);
+            console.log("✅ Hash Payload 解析成功:", decodedData);
 
-            // E. 載入
-            if (typeof loadPatientData === 'function') {
-                loadPatientData(decodedData);
-                console.log("✅ 成功呼叫 loadPatientData，請檢查畫面右側。");
-                // 成功後彈個提示 (測試用，確認成功後可拿掉)
-                // alert("病患資料讀取成功：\n" + (decodedData.diagnosis?.truth?.customerName || "未知"));
-            } else {
-                console.error("❌ 錯誤: 找不到 loadPatientData 函式！");
-                alert("系統錯誤：找不到載入函式 (loadPatientData)");
-            }
-
+            // ★★★ 修改重點：交給統一入口處理，標記來源為 URL ★★★
+            handleIncomingPatientData(decodedData, 'URL');
+            
             console.groupEnd();
-            return;
+            return; // 找到就結束，不繼續往下找
 
         } catch (e) {
-            console.error("❌ 解析失敗 (Critical Error):", e);
-            alert("⚠️ 病患資料讀取失敗！\n\n錯誤原因: " + e.message + "\n\n請截圖 Console 給開發者檢查。");
-            console.groupEnd();
+            console.error("❌ Hash Payload 解析失敗:", e);
+            // 解析失敗不阻擋，繼續往下檢查其他來源
         }
-    } else {
-        console.log("⚠️ 未偵測到 Hash Payload，嘗試檢查其他來源...");
     }
 
+    // ==========================================
     // 2. 次要檢查 URL Query (?data=...)
+    // ==========================================
     const urlParams = new URLSearchParams(window.location.search);
     const urlData = urlParams.get('data');
 
@@ -2857,15 +2903,43 @@ function checkPatientData() {
         try {
             console.log(">> 偵測到 ?data= 參數");
             const decodedData = JSON.parse(decodeURIComponent(urlData));
-            loadPatientData(decodedData);
+            
+            // ★★★ 修改重點：交給統一入口處理，標記來源為 URL ★★★
+            handleIncomingPatientData(decodedData, 'URL');
+            
             console.groupEnd();
-            return;
+            return; // 找到就結束
         } catch (e) {
             console.error("URL Query 解析失敗:", e);
         }
     }
 
-    console.log(">> 無任何外部資料，顯示上傳介面。");
+    // ==========================================
+    // 3. 最後檢查 LocalStorage (例如從別頁跳轉過來)
+    // ==========================================
+    const localData = localStorage.getItem('incoming_patient');
+    if (localData) {
+        try {
+            console.log(">> 偵測到 LocalStorage 資料");
+            const parsedData = JSON.parse(localData);
+            
+            // 讀取後清除，避免下次重整又讀到舊的
+            localStorage.removeItem('incoming_patient');
+
+            // ★★★ 修改重點：交給統一入口處理，標記來源為 LocalStorage ★★★
+            handleIncomingPatientData(parsedData, 'LocalStorage');
+            
+            console.groupEnd();
+            return;
+        } catch (e) {
+            console.error("LocalStorage 解析失敗:", e);
+        }
+    }
+
+    // ==========================================
+    // 4. 完全沒資料
+    // ==========================================
+    console.log(">> 無任何外部靜態資料，顯示上傳介面。");
     renderNoPatientState();
     console.groupEnd();
 }
