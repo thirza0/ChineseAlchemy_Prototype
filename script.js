@@ -141,6 +141,7 @@ try {
     console.warn("MQTT 初始化失敗 (可能未引入函式庫):", e);
 }
 
+// (檢查 script.js 裡是否有這段，應該不用改，只要確認 ID 對應正確即可)
 function updateMqttStatusUI(isOnline) {
     const dot = document.getElementById('mqtt-status-dot');
     if (dot) {
@@ -148,15 +149,27 @@ function updateMqttStatusUI(isOnline) {
         dot.title = isOnline ? "雲端已連線" : "雲端斷線中";
     }
 }
-// script.js - 切換傳輸模式 UI
-function setTransmissionMode(mode, element) {
+// script.js - 更新後的切換傳輸模式 UI
+function setTransmissionMode(mode) {
     transmissionMode = mode;
     
-    // UI 更新
-    document.querySelectorAll('.trans-option').forEach(el => el.classList.remove('active'));
-    element.classList.add('active');
+    // 1. 移除所有按鈕的 active 樣式
+    document.getElementById('mode-btn-broadcast').classList.remove('active');
+    document.getElementById('mode-btn-mqtt').classList.remove('active');
     
-    console.log(`[系統] 切換傳輸模式為: ${mode}`);
+    // 2. 根據模式點亮對應按鈕
+    if (mode === 'BROADCAST') {
+        document.getElementById('mode-btn-broadcast').classList.add('active');
+        console.log(`[系統] 切換傳輸模式: 📡 本地廣播`);
+    } else {
+        document.getElementById('mode-btn-mqtt').classList.add('active');
+        console.log(`[系統] 切換傳輸模式: ☁️ 雲端 MQTT`);
+        
+        // 切換過來時，如果 MQTT 沒連線，可以嘗試重連或提示
+        if (!mqttClient || !mqttClient.connected) {
+             console.log("[系統] 雲端尚未連線...");
+        }
+    }
 }
 // --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload

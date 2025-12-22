@@ -2102,3 +2102,75 @@ input[type=range] {
     color: white !important;
     box-shadow: 0 0 15px rgba(0, 150, 136, 0.6);
 }
+/* style.css - 右上角系統切換開關 */
+
+#system-switch-container {
+    position: absolute;
+    top: 20px;
+    right: 20px; /* 固定在右上角 */
+    z-index: 100; /* 確保在最上層 */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.sys-switch-label {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 5px;
+}
+
+.sys-switch-group {
+    display: flex;
+    background-color: rgba(30, 30, 35, 0.9);
+    border: 1px solid #444;
+    border-radius: 30px; /* 膠囊狀 */
+    padding: 3px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.sys-btn {
+    background: transparent;
+    border: none;
+    color: #666;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+    font-weight: bold;
+}
+
+.sys-btn:hover {
+    color: #ccc;
+    background-color: rgba(255,255,255,0.05);
+}
+
+/* 啟動狀態：本地廣播 (金色) */
+.sys-btn.active#mode-btn-broadcast {
+    background-color: #d4af37;
+    color: #121212;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+/* 啟動狀態：雲端 MQTT (青色) */
+.sys-btn.active#mode-btn-mqtt {
+    background-color: #009688; /* 配合醫館色系 */
+    color: #fff;
+    box-shadow: 0 0 10px rgba(0, 150, 136, 0.4);
+}
+
+/* 狀態小紅點微調 */
+#mqtt-status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 2px;
+}
