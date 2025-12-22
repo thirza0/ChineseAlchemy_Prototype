@@ -1919,3 +1919,118 @@ input[type=range] {
     cursor: not-allowed;
     box-shadow: none;
 }
+/* style.css - 右側懸浮工具列與重置功能 */
+
+#right-toolbar {
+    position: fixed;
+    right: 20px;
+    bottom: 20px; /* 或者 top: 20px 視您喜好 */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1600; /* 比病歷面板更高 */
+}
+
+/* 圓形工具按鈕 */
+.tool-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid #607D8B;
+    background-color: #1e1e24;
+    color: #90A4AE;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: all 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tool-btn:hover {
+    background-color: #2c3e50;
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.6);
+}
+
+/* 啟動狀態 (病歷開啟時) */
+.tool-btn.active {
+    background-color: #607D8B;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(96, 125, 139, 0.6);
+}
+
+/* 危險按鈕 (重置) */
+.tool-btn.danger {
+    border-color: #c0392b;
+    color: #c0392b;
+}
+
+.tool-btn.danger:hover {
+    background-color: #c0392b;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(192, 57, 43, 0.6);
+}
+
+/* --- Tooltip (對話氣泡) --- */
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-text {
+    visibility: hidden;
+    width: 100px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 0;
+    position: absolute;
+    z-index: 1;
+    
+    /* 位置設定：在按鈕左側 */
+    top: 50%;
+    right: 125%; 
+    transform: translateY(-50%);
+    
+    /* 淡入動畫 */
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.9rem;
+    border: 1px solid #c0392b; /* 紅框警告 */
+}
+
+/* 箭頭 */
+.tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 100%; /* 在氣泡右側 */
+    margin-top: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent transparent #c0392b;
+}
+
+/* Hover 顯示 */
+.tooltip-container:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* 修改病歷面板樣式，使其配合開關 */
+.patient-panel {
+    /* 原本樣式保持不變 */
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s;
+    transform-origin: right center;
+}
+
+.patient-panel.hidden {
+    display: block !important; /* 覆蓋原本的 display:none，改用 transform 隱藏 */
+    transform: translateX(120%) translateY(-50%) !important; /* 向右滑出螢幕 */
+    opacity: 0;
+    pointer-events: none;
+}

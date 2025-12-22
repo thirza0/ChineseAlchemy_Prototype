@@ -397,7 +397,7 @@ const RecipeDB = [
     {
         nameId: 28, // 九轉金丹
         targets: ["DAN_SHA", "SHUI_YIN"],
-        ratio: [0.5, 0.3],
+        ratio: [0.7, 0.4],
         element: Elements.FIRE,
         yinYang: 3,
         grindTarget: 0.6,
@@ -408,7 +408,7 @@ const RecipeDB = [
     {
         nameId: 29, // 五石散
         targets: ["ZHONG_RU_SHI", "SHI_LIU_HUANG"],
-        ratio: [1.0, 0.5],
+        ratio: [1.1, 0.5],
         element: Elements.METAL,
         yinYang: 3,
         grindTarget: 0.6,
@@ -419,7 +419,7 @@ const RecipeDB = [
     {
         nameId: 30, // 太一神精丹
         targets: ["DAN_SHA", "ZENG_QING"],
-        ratio: [0.1, 0.1],
+        ratio: [1.5, 1.4],
         element: Elements.FIRE,
         yinYang: -1,
         grindTarget: 0.6,
@@ -430,7 +430,7 @@ const RecipeDB = [
     {
         nameId: 31, // 小還丹
         targets: ["SHUI_YIN", "SHI_LIU_HUANG"],
-        ratio: [1.0, 0.5],
+        ratio: [1.3, 0.5],
         element: Elements.METAL,
         yinYang: 0,
         grindTarget: 0.6,
@@ -463,7 +463,7 @@ const RecipeDB = [
     {
         nameId: 34, // 赤雪流珠丹
         targets: ["DAN_SHA", "XIONG_HUANG"],
-        ratio: [0.8, 0.3],
+        ratio: [2.0, 0.6],
         element: Elements.FIRE,
         yinYang: 2,
         grindTarget: 0.6,
@@ -474,7 +474,7 @@ const RecipeDB = [
     {
         nameId: 35, // 三五神丹
         targets: ["XIONG_HUANG", "DAN_SHA"],
-        ratio: [2.0, 1.5],
+        ratio: [3.2, 1.5],
         element: Elements.EARTH,
         yinYang: 2,
         grindTarget: 0.6,
@@ -496,7 +496,7 @@ const RecipeDB = [
     {
         nameId: 37, // 五靈丹
         targets: ["DAN_SHA", "XIONG_HUANG"],
-        ratio: [1.0, 0.5],
+        ratio: [1.3, 0.8],
         element: Elements.ALL,
         yinYang: 0,
         grindTarget: 0.6,
@@ -510,7 +510,7 @@ const RecipeDB = [
     {
         nameId: 84, // 黑鉛丹
         targets: ["HEI_QIAN", "SHUI_YIN"],
-        ratio: [3.0, 1.0],
+        ratio: [3.0, 1.4],
         element: Elements.WATER,
         yinYang: -3,
         grindTarget: 0.6,
@@ -565,7 +565,7 @@ const RecipeDB = [
     {
         nameId: 89, // 玉泉丸
         targets: ["BAI_YU", "ZHONG_RU_SHI"],
-        ratio: [10.0, 5.0],
+        ratio: [10.0, 4.0],
         element: Elements.METAL,
         yinYang: -2,
         grindTarget: 0.6,
@@ -587,7 +587,7 @@ const RecipeDB = [
     {
         nameId: 91, // 雲母丹
         targets: ["YUN_MU", "BAI_SHI_YING"],
-        ratio: [5.0, 2.0],
+        ratio: [5.5, 2.3],
         element: Elements.METAL,
         yinYang: -1,
         grindTarget: 0.6,
@@ -598,7 +598,7 @@ const RecipeDB = [
     {
         nameId: 92, // 磁石丹
         targets: ["CI_SHI", "SHUI_YIN"],
-        ratio: [3.0, 1.5],
+        ratio: [4.2, 1.5],
         element: Elements.WATER,
         yinYang: -2,
         grindTarget: 0.6,
@@ -609,7 +609,7 @@ const RecipeDB = [
     {
         nameId: 93, // 玄鐵丹
         targets: ["XUAN_TIE", "SONG_YAN"],
-        ratio: [4.0, 2.0],
+        ratio: [3.2, 2.0],
         element: Elements.WATER,
         yinYang: 1,
         grindTarget: 0.6,
@@ -631,7 +631,7 @@ const RecipeDB = [
     {
         nameId: 95, // 赤石脂丹
         targets: ["CHI_SHI_ZHI", "ZENG_QING"],
-        ratio: [8.0, 4.0],
+        ratio: [8.0, 3.0],
         element: Elements.FIRE,
         yinYang: 1,
         grindTarget: 0.6,
@@ -642,7 +642,7 @@ const RecipeDB = [
     {
         nameId: 96, // 辟兵丹
         targets: ["DAN_SHA", "XIONG_HUANG"],
-        ratio: [2.0, 1.0],
+        ratio: [3.5, 1.5],
         element: Elements.FIRE,
         yinYang: 2,
         grindTarget: 0.6,
@@ -653,7 +653,7 @@ const RecipeDB = [
     {
         nameId: 97, // 空青黑鉛丹
         targets: ["KONG_QING", "HEI_QIAN"],
-        ratio: [3.0, 1.5],
+        ratio: [4.0, 2.2],
         element: Elements.WOOD,
         yinYang: -3,
         grindTarget: 0.6,

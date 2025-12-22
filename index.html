@@ -300,10 +300,25 @@
 
     </div>
     </div>
+    <div id="right-toolbar">
+        <button id="toggle-patient-btn" class="tool-btn" onclick="togglePatientPanel()" title="顯示/隱藏病歷">
+            📋
+        </button>
+
+        <div class="tooltip-container">
+            <button id="system-reset-btn" class="tool-btn danger" onclick="resetAllSystemData()">
+                ⚡
+            </button>
+            <span class="tooltip-text">初始化紀錄</span>
+        </div>
+    </div>
     <div id="patient-info-panel" class="patient-panel">
         <div class="patient-header">
             <h3>📋 病歷資料</h3>
-            <span id="patient-status-indicator" class="status-dot red" title="無資料"></span>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <span id="patient-status-indicator" class="status-dot red" title="無資料"></span>
+                <span onclick="togglePatientPanel()" style="cursor:pointer; color:#888;">✖</span>
+            </div>
         </div>
 
         <div id="patient-data-display" class="hidden">

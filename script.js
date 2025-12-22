@@ -437,8 +437,11 @@ function resolveDirection(myElement, otherElement) {
     return getBaseDirection(myElement);
 }
 
+// script.js - 修改 calculateCoordinate (加入同屬性共鳴機制)
+
 function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
     let m1, m2, w1, w2;
+    // 排序：確保 m1 是權重較大的那個 (雖然數學上加法沒差，但為了邏輯一致性)
     if (weight1 >= weight2) { m1 = mat1; w1 = weight1; m2 = mat2; w2 = weight2; }
     else { m1 = mat2; w1 = weight2; m2 = mat1; w2 = weight1; }
 
@@ -447,18 +450,36 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
 
     if (grindRate === undefined) grindRate = 0;
 
-    // 修改後 (讓研磨佔比獨立出來)
+    // 研磨影響係數 (從全域變數讀取配置)
     let effectiveRate = BASE_RATIO + (GRIND_RATIO * grindRate);
 
+    // 1. 計算原始強度 (這是加權平均，結果不會超過 Max)
     let rawMag1 = m1.max * effectiveRate * (w1 / totalW);
     let rawMag2 = m2.max * effectiveRate * (w2 / totalW);
 
+    // 2. ★★★ 新增：同屬性共鳴加成 (Resonance Bonus) ★★★
+    let resonanceBonus = 1.0;
+    
+    // 條件：屬性相同，且不是「全」屬性 (全屬性通常是特殊的，不參與簡單疊加)
+    if (m1.element === m2.element && m1.element !== Elements.ALL) {
+        // --- 共鳴公式設計 ---
+        // 這裡採用：基礎 1.0 + (總重量 * 0.1)
+        // 意思每投入 1g 的總重量，推力就增加 10%
+        // 例如：雲母 5g + 白石英 2g = 7g -> Bonus = 1.0 + 0.7 = 1.7倍
+        // 原本平均力道約 1.0，乘上 1.7 後變成 1.7，成功突破上限。
+        resonanceBonus = 1.0 + (totalW * 0.1); 
+    }
+
+    // 3. 取得向量方向
     let v1 = resolveDirection(m1.element, m2.element);
     let v2 = resolveDirection(m2.element, m1.element);
 
-    let vecX = (v1.x * rawMag1) + (v2.x * rawMag2);
-    let vecY = (v1.y * rawMag1) + (v2.y * rawMag2);
+    // 4. ★ 將 Bonus 乘入最終向量計算
+    // (向量1強度 + 向量2強度) * 共鳴倍率
+    let vecX = ((v1.x * rawMag1) + (v2.x * rawMag2)) * resonanceBonus;
+    let vecY = ((v1.y * rawMag1) + (v2.y * rawMag2)) * resonanceBonus;
 
+    // 5. 四捨五入到小數點第二位
     let finalX = Math.round(vecX * 100) / 100;
     let finalY = Math.round(vecY * 100) / 100;
 
@@ -1658,11 +1679,16 @@ async function calculateFinalResult() {
         subMat: `${TextDB[dbMat2.nameId]} (${dbMat2.element})`,
         grind: (grindCoefficient * 100).toFixed(0) + "%",
         advice: advice,
-        symptoms: symptomText,
+        
+        symptoms: symptomText,        // 這是給人類看的中文 (例如 "安神")
+        symptomIds: (!isSlag && bestRecipe) ? bestRecipe.symptoms : [], // ★ 新增這行：保留原始 ID 陣列 (例如 [1, 5])
+        
         reaction: reactionText,
         toxin: displayToxin,
         playerRes: lastPlayerResult
     };
+
+    lastResultData = resultData;
 
     lastResultData = resultData;
 
@@ -2639,6 +2665,12 @@ function loadPatientData(data) {
 
     // 呼叫渲染 UI
     renderPatientInfo(patient);
+    
+    // ★★★ 新增：載入成功後，自動展開面板並亮起按鈕 ★★★
+    const panel = document.getElementById('patient-info-panel');
+    const btn = document.getElementById('toggle-patient-btn');
+    if (panel) panel.classList.remove('hidden');
+    if (btn) btn.classList.add('active');
 }
 // script.js - checkPatientData (除錯偵探版)
 
@@ -2970,18 +3002,33 @@ function convertEffectToCodes(symptoms) {
     return codes.join(', ');
 }
 
-// ★★★ 7. 提交丹藥 (核心傳送邏輯 - 防呆修正版) ★★★
+// script.js - 藥品交付系統 (v3.0 Broadcast Channel 版)
+
+// 0. 定義廣播頻道 (名稱必須跟同事約好一樣)
+const clinicChannel = new BroadcastChannel('alchemy_clinic_channel');
+
+// 補上存檔函式 (防止報錯)
+function saveInventory() {
+    localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
+}
+
+// ... (openDeliveryModal, closeDeliveryModal, renderDeliveryList 等函式保持不變，不用動) ...
+
+// ★★★ 修改後的提交函式 ★★★
 function submitMedicinesToClinic() {
     if (selectedDeliveryIds.length === 0) return;
-    if (!confirm(`確定要提交這 ${selectedDeliveryIds.length} 顆丹藥嗎？\n(提交後將從背包移除)`)) return;
+    
+    // 再次確認玩家意圖
+    if (!confirm(`確定要透過【傳送陣】提交這 ${selectedDeliveryIds.length} 顆丹藥嗎？\n(提交後將從背包移除，且不會跳轉頁面)`)) return;
 
-    // A. 抓取選定的藥品資料
+    // A. 準備資料 (跟之前一樣)
     const medicinesToSend = inventoryStorage
-        // ★ 改用 uuid 過濾
         .filter(item => selectedDeliveryIds.includes(item.uuid))
         .map(item => {
-            // ★ 防呆：確保 symptoms 是陣列
-            const safeSymptoms = Array.isArray(item.symptoms) ? item.symptoms : [];
+            // ★★★ 修正重點：改抓 symptomIds (原始ID陣列) ★★★
+            // 因為 item.symptoms 現在存的是中文 "安神、止痛"，不能拿來 map
+            // 為了相容舊資料，如果沒有 symptomIds 就給空陣列
+            const rawSymptoms = Array.isArray(item.symptomIds) ? item.symptomIds : [];
 
             return {
                 id: item.id,
@@ -2989,7 +3036,8 @@ function submitMedicinesToClinic() {
                 element: item.element,
                 quality: item.quality,
                 toxin: item.toxin,
-                effectCodes: safeSymptoms.map(s => {
+                // 使用原始 ID 陣列來轉換代碼
+                effectCodes: rawSymptoms.map(s => {
                     const map = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E' };
                     return map[s] || null;
                 }).filter(c => c !== null)
@@ -3004,36 +3052,76 @@ function submitMedicinesToClinic() {
         medicines: medicinesToSend
     };
 
-    console.log("[系統] 準備傳送 Payload:", payloadObj);
+    console.log("[系統] 透過廣播頻道發送:", payloadObj);
 
-    // C. 刪除本地庫存
-    // ★ 改用 uuid 過濾刪除
+    // ★★★ C. 核心修改：使用廣播發送，而不是跳轉 ★★★
+    clinicChannel.postMessage(payloadObj);
+
+    // D. 刪除本地庫存 & 更新 UI
     inventoryStorage = inventoryStorage.filter(item => !selectedDeliveryIds.includes(item.uuid));
-    
-    saveInventory(); // ★ 這裡呼叫現在已經定義好的函式
-    renderInventory(); 
+    saveInventory();
+    renderInventory();
     closeDeliveryModal();
-    if(currentPatientData) renderPatientInfo(currentPatientData); 
+    if(currentPatientData) renderPatientInfo(currentPatientData);
 
-    // D. Base64 編碼與跳轉
-    try {
-        const jsonStr = JSON.stringify(payloadObj);
-        const utf8Bytes = encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g,
-            function(match, p1) {
-                return String.fromCharCode('0x' + p1);
-            });
-        let base64 = btoa(utf8Bytes);
-        base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        
-        const targetUrl = `${CLINIC_URL}#payload=${base64}`;
-        
-        console.log("[系統] 跳轉目標:", targetUrl);
-        window.location.href = targetUrl;
-
-    } catch (e) {
-        console.error("傳送失敗:", e);
-        alert("資料打包發生錯誤，請查看 Console。");
+    // E. 顯示成功訊息 (取代跳轉)
+    alert("✨ 丹藥已透過傳送陣送達醫館！\n\n請切換至「問診系統」分頁查看結果。");
+    
+    // (保留舊的 Base64 邏輯在註解中，以備不時之需，但不再執行)
+    /* const jsonStr = JSON.stringify(payloadObj);
+    ...
+    window.location.href = targetUrl; 
+    */
+}
+// script.js - 切換病歷面板顯示/隱藏
+function togglePatientPanel() {
+    const panel = document.getElementById('patient-info-panel');
+    const btn = document.getElementById('toggle-patient-btn');
+    
+    if (panel) {
+        if (panel.classList.contains('hidden')) {
+            // 展開
+            panel.classList.remove('hidden');
+            if (btn) btn.classList.add('active'); // 按鈕亮起
+        } else {
+            // 收縮
+            panel.classList.add('hidden');
+            if (btn) btn.classList.remove('active'); // 按鈕變暗
+        }
     }
+}
+// script.js - 初始化玩家紀錄 (雙重確認)
+function resetAllSystemData() {
+    // 第一次確認
+    if (!confirm("⚠️ 警告：您即將進行「系統初始化」。\n\n這將會清除：\n1. 所有煉丹歷史紀錄\n2. 背包內所有丹藥\n3. 已發現的配方狀態\n4. 當前病患資料\n\n確定要繼續嗎？")) {
+        return;
+    }
+
+    // 第二次確認 (防呆)
+    if (!confirm("⛔ 最後警告 ⛔\n\n此操作「無法復原」！\n所有的努力都將化為烏有。\n\n您真的確定要重置所有資料嗎？")) {
+        return;
+    }
+
+    console.log("[系統] 執行全面初始化...");
+
+    // 1. 清除 LocalStorage
+    localStorage.removeItem('alchemy_history_storage'); // 歷史紀錄
+    localStorage.removeItem('alchemy_inventory');       // 背包
+    localStorage.removeItem('incoming_patient');        // 病患資料
+    
+    // 如果還有其他儲存的 key，請在此加入
+    // localStorage.clear(); // 或者直接暴力清空所有 (視需求而定)
+
+    // 2. 清空記憶體變數 (雖然 reload 會重置，但為了保險)
+    historyStorage = { NEUTRAL: [], EXTEND: [], BIAS: [] };
+    inventoryStorage = [];
+    currentPatientData = null;
+
+    // 3. UI 顯示重置訊息
+    alert("✨ 系統已初始化完畢，網頁將重新載入。");
+
+    // 4. 強制重整頁面以套用變更
+    window.location.reload();
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {
