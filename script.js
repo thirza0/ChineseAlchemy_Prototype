@@ -115,14 +115,14 @@ const broadcastChannel = new BroadcastChannel('alchemy_clinic_channel');
 
 // MQTT 設定
 // ★請設定一個獨特的 Topic 名稱，避免跟別人在公用伺服器撞頻
-const MQTT_TOPIC = 'thirza/alchemy/v1'; 
+const MQTT_TOPIC = 'thirza/alchemy/v1';
 let mqttClient = null;
 
 try {
     // ★★★ 修正 1：Port 請改為 8884 (WSS 加密連線專用) ★★★
-    // 原本是 8000，但在 HTTPS 網頁下會連不上
+    // ✅修正後 (可連線):
     mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
-    
+
     mqttClient.on('connect', () => {
         console.log("[MQTT] 連線成功！Topic:", MQTT_TOPIC);
         updateMqttStatusUI(true);
@@ -135,7 +135,7 @@ try {
             }
         });
     });
-    
+
     // ★★★ 修正 3：加入監聽訊息的事件 (Receiver) ★★★
     mqttClient.on('message', (topic, message) => {
         // 確保收到的訊息是來自我們訂閱的頻道
@@ -144,14 +144,14 @@ try {
                 // 將 Buffer 轉為字串並解析 JSON
                 const msgString = message.toString();
                 const payload = JSON.parse(msgString);
-                
+
                 console.log("📡 [MQTT] 收到訊息:", payload);
 
                 // 過濾掉自己發出的訊息 (如果需要的話)
                 // 這裡假設同事發來的 source 是 'clinic'
                 if (payload.source === 'clinic') {
                     alert(`收到醫館傳來的測試訊號！\n內容: ${JSON.stringify(payload)}`);
-                    
+
                     // TODO: 未來可以在這裡寫「自動載入病患資料」的邏輯
                     // if (payload.patientData) loadPatientData(payload.patientData);
                 }
@@ -166,7 +166,7 @@ try {
         console.error("[MQTT] 連線錯誤:", err);
         updateMqttStatusUI(false);
     });
-    
+
     mqttClient.on('offline', () => {
         updateMqttStatusUI(false);
     });
@@ -186,11 +186,11 @@ function updateMqttStatusUI(isOnline) {
 // script.js - 更新後的切換傳輸模式 UI
 function setTransmissionMode(mode) {
     transmissionMode = mode;
-    
+
     // 1. 移除所有按鈕的 active 樣式
     document.getElementById('mode-btn-broadcast').classList.remove('active');
     document.getElementById('mode-btn-mqtt').classList.remove('active');
-    
+
     // 2. 根據模式點亮對應按鈕
     if (mode === 'BROADCAST') {
         document.getElementById('mode-btn-broadcast').classList.add('active');
@@ -198,10 +198,10 @@ function setTransmissionMode(mode) {
     } else {
         document.getElementById('mode-btn-mqtt').classList.add('active');
         console.log(`[系統] 切換傳輸模式: ☁️ 雲端 MQTT`);
-        
+
         // 切換過來時，如果 MQTT 沒連線，可以嘗試重連或提示
         if (!mqttClient || !mqttClient.connected) {
-             console.log("[系統] 雲端尚未連線...");
+            console.log("[系統] 雲端尚未連線...");
         }
     }
 }
@@ -557,13 +557,13 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
 
     // ★★★ 新增：同屬性共鳴加成 (Resonance Bonus) ★★★
     let resonanceBonus = 1.0;
-    
+
     // 修改判斷條件：
     // 1. 屬性相同
     // 2. 不是全屬性
     // 3. ★ 新增：次要材料重量必須大於 0 (避免單一材料預覽時誤觸發)
     if (m1.element === m2.element && m1.element !== Elements.ALL && w2 > 0) {
-        resonanceBonus = 1.0 + (totalW * 0.1); 
+        resonanceBonus = 1.0 + (totalW * 0.1);
     }
 
     // 3. 取得向量方向
@@ -1775,10 +1775,10 @@ async function calculateFinalResult() {
         subMat: `${TextDB[dbMat2.nameId]} (${dbMat2.element})`,
         grind: (grindCoefficient * 100).toFixed(0) + "%",
         advice: advice,
-        
+
         symptoms: symptomText,        // 這是給人類看的中文 (例如 "安神")
         symptomIds: (!isSlag && bestRecipe) ? bestRecipe.symptoms : [], // ★ 新增這行：保留原始 ID 陣列 (例如 [1, 5])
-        
+
         reaction: reactionText,
         toxin: displayToxin,
         playerRes: lastPlayerResult
@@ -2761,7 +2761,7 @@ function loadPatientData(data) {
 
     // 呼叫渲染 UI
     renderPatientInfo(patient);
-    
+
     // ★★★ 新增：載入成功後，自動展開面板並亮起按鈕 ★★★
     const panel = document.getElementById('patient-info-panel');
     const btn = document.getElementById('toggle-patient-btn');
@@ -2938,9 +2938,9 @@ function renderNoPatientState() {
     const displayZone = document.getElementById('patient-data-display');
     const uploadZone = document.getElementById('patient-upload-zone');
     const statusDot = document.getElementById('patient-status-indicator');
-    
+
     // ★ 修正重點：必須這裡宣告 deliverBtn，程式才找得到它
-    const deliverBtn = document.getElementById('deliver-btn'); 
+    const deliverBtn = document.getElementById('deliver-btn');
 
     if (displayZone) displayZone.classList.add('hidden');
     if (uploadZone) uploadZone.classList.remove('hidden');
@@ -2990,11 +2990,11 @@ function saveInventory() {
 // 1. 開啟選藥視窗
 function openDeliveryModal() {
     if (!currentPatientData) return;
-    
+
     const modal = document.getElementById('delivery-modal');
     modal.classList.remove('hidden');
     document.getElementById('delivery-patient-name').textContent = currentPatientData.name || "未知病患";
-    
+
     // 重置選擇
     selectedDeliveryIds = [];
     renderDeliveryList();
@@ -3022,17 +3022,17 @@ function renderDeliveryList() {
 
     list.forEach(item => {
         const div = document.createElement('div');
-        
+
         // ★ 關鍵修改：使用 uuid 進行比對 (字串對字串，絕對精準)
         const isSelected = selectedDeliveryIds.includes(item.uuid);
         const isMaxReached = selectedDeliveryIds.length >= 3;
-        
+
         // 如果沒被選且已達上限，則禁用
         const isDisabled = !isSelected && isMaxReached;
 
         div.className = `delivery-row ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`;
-        
-        const codes = convertEffectToCodes(item.symptoms); 
+
+        const codes = convertEffectToCodes(item.symptoms);
 
         // ★ 關鍵修改：傳遞 uuid
         div.onclick = (e) => {
@@ -3057,7 +3057,7 @@ function renderDeliveryList() {
 // 4. 切換選擇狀態 (使用 uuid)
 function toggleDeliverySelection(uuid) {
     const index = selectedDeliveryIds.indexOf(uuid);
-    
+
     if (index > -1) {
         // 取消選取
         selectedDeliveryIds.splice(index, 1);
@@ -3075,10 +3075,10 @@ function toggleDeliverySelection(uuid) {
 function updateDeliveryUI() {
     const count = selectedDeliveryIds.length;
     document.getElementById('delivery-count').textContent = `已選：${count} / 3`;
-    
+
     // 更新外部按鈕文字
     const mainBtn = document.getElementById('deliver-btn');
-    if(mainBtn) mainBtn.textContent = `💊 提交丹藥 (${count}/3)`;
+    if (mainBtn) mainBtn.textContent = `💊 提交丹藥 (${count}/3)`;
 
     const confirmBtn = document.getElementById('confirm-delivery-btn');
     if (count > 0) {
@@ -3112,10 +3112,10 @@ function saveInventory() {
 
 function submitMedicinesToClinic() {
     if (selectedDeliveryIds.length === 0) return;
-    
+
     // 判斷模式文字
     const modeText = transmissionMode === 'BROADCAST' ? '【近距離廣播】' : '【雲端傳送陣】';
-    
+
     // 再次確認
     if (!confirm(`確定要透過 ${modeText} 提交這 ${selectedDeliveryIds.length} 顆丹藥嗎？`)) return;
 
@@ -3168,13 +3168,13 @@ function submitMedicinesToClinic() {
     saveInventory();
     renderInventory();
     closeDeliveryModal();
-    if(currentPatientData) renderPatientInfo(currentPatientData);
+    if (currentPatientData) renderPatientInfo(currentPatientData);
 }
 // script.js - 切換病歷面板顯示/隱藏
 function togglePatientPanel() {
     const panel = document.getElementById('patient-info-panel');
     const btn = document.getElementById('toggle-patient-btn');
-    
+
     if (panel) {
         if (panel.classList.contains('hidden')) {
             // 展開
@@ -3205,7 +3205,7 @@ function resetAllSystemData() {
     localStorage.removeItem('alchemy_history_storage'); // 歷史紀錄
     localStorage.removeItem('alchemy_inventory');       // 背包
     localStorage.removeItem('incoming_patient');        // 病患資料
-    
+
     // 如果還有其他儲存的 key，請在此加入
     // localStorage.clear(); // 或者直接暴力清空所有 (視需求而定)
 
@@ -3225,8 +3225,8 @@ function resetAllSystemData() {
 function openClinicWindow() {
     // 1. 設定醫館的路徑
     // 如果您的資料夾名稱不是 'clinic'，請修改這裡
-    const clinicPath = 'Prototype_test/index.html'; 
-    
+    const clinicPath = 'Prototype_test/index.html';
+
     // 2. 設定視窗參數
     // width/height: 視窗大小
     // left/top: 視窗出現的位置 (設為 0 盡量靠左上，方便您把主視窗移到右邊)
