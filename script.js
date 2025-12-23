@@ -112,87 +112,117 @@ const CLINIC_URL = "https://lindaagilebyte.github.io/Prototype_03/"; // 範例
 // --- 通訊設定 ---
 let transmissionMode = 'BROADCAST'; // 預設模式: 'BROADCAST' or 'MQTT'
 const broadcastChannel = new BroadcastChannel('alchemy_clinic_channel');
+// script.js - 修改 MQTT 初始化區塊
 
-// MQTT 設定
-// ★請設定一個獨特的 Topic 名稱，避免跟別人在公用伺服器撞頻
-const MQTT_TOPIC = 'thirza/alchemy/v1';
+// ==========================================
+// 1. 設定基礎常數
+// ==========================================
+const MQTT_BASE_TOPIC = 'thirza/alchemy/v1'; // 基礎頻道
+let currentMqttTopic = MQTT_BASE_TOPIC;      // 最終使用的頻道 (預設為公開)
 let mqttClient = null;
 
-try {
-    // ★★★ 修正 1：Port 請改為 8884 (WSS 加密連線專用) ★★★
-    // ↓↓↓ 把這段塞在 mqtt.connect 上面 ↓↓↓
-    console.log("🚩 [1] 程式碼活著！準備執行連線...");
+// ==========================================
+// 2. 解析 URL 房間號 (Room ID)
+// ==========================================
+function getRoomIdFromUrl() {
+    // 讀取網址 ? 後面的參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room_id'); // 抓取 key 為 room_id 的值
 
-    try {
-        // 你的連線程式碼
-        mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
-
-        // ↓↓↓ 把這段塞在 mqtt.connect 下面 ↓↓↓
-        console.log("🚩 [2] 連線指令已發出！");
-    } catch (e) {
-        console.error("🚩 [錯誤] 發生慘案：", e);
+    // 簡單驗證：必須是 4 碼數字
+    if (roomId && /^\d{4}$/.test(roomId)) {
+        return roomId;
     }
-    // ✅修正後 (可連線):
-    mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+    return null; // 沒抓到或格式不對
+}
 
-    mqttClient.on('connect', () => {
-        console.log("[MQTT] 連線成功！Topic:", MQTT_TOPIC);
-        updateMqttStatusUI(true);
+// ==========================================
+// 3. 啟動 MQTT 連線
+// ==========================================
+function initMqttConnection() {
+    // A. 決定 Topic
+    const roomId = getRoomIdFromUrl();
+    
+    if (roomId) {
+        // 如果有房間號，頻道變成專屬頻道
+        currentMqttTopic = `${MQTT_BASE_TOPIC}/${roomId}`;
+        console.log(`🔒 [系統] 已加入專屬房間，ID: ${roomId}`);
+        
+        // (選用) 可以在 UI 上顯示房間號，讓使用者知道自己在哪
+        // document.getElementById('room-display').innerText = `Room: ${roomId}`;
+    } else {
+        // 沒房間號，使用公開頻道
+        currentMqttTopic = MQTT_BASE_TOPIC;
+        console.log(`🌍 [系統] 無房間號，加入公共頻道`);
+    }
 
-        // ★★★ 修正 2：連線成功後，立刻訂閱頻道 (Subscribe) ★★★
-        // 這樣伺服器才知道要把這個頻道的訊息轉發給您
-        mqttClient.subscribe(MQTT_TOPIC, (err) => {
-            if (!err) {
-                console.log(`[MQTT] 已訂閱頻道: ${MQTT_TOPIC}，等待訊息中...`);
+    // B. 開始連線 (建議用 EMQX)
+    try {
+        console.log(`[MQTT] 正在連線至頻道: ${currentMqttTopic}`);
+        
+        // 使用 EMQX Broker
+        mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+            clientId: 'Alchemy_' + Math.random().toString(16).substr(2, 8),
+            keepalive: 60
+        });
+
+        // C. 連線成功後的訂閱
+        mqttClient.on('connect', () => {
+            console.log("%c[MQTT] ✅ 連線成功！", "color: #00ff00; font-weight: bold;");
+            updateMqttStatusUI(true); // 讓燈號變綠
+
+            // ★ 關鍵：訂閱剛剛決定好的 Topic
+            mqttClient.subscribe(currentMqttTopic, (err) => {
+                if (!err) {
+                    console.log(`[MQTT] 已訂閱: ${currentMqttTopic}`);
+                    
+                    // 如果是用戶透過 Link 進來的，可以給個提示
+                    if (roomId) {
+                        // 這裡可以用你的 showToast 或 alert
+                        console.log(`✨ 已連線至診間 #${roomId}`);
+                    }
+                }
+            });
+        });
+
+        // ... (原本的 error, offline 監聽邏輯保持不變) ...
+        
+        // D. 訊息接收 (這裡也要改判斷 topic)
+        mqttClient.on('message', (topic, message) => {
+            // 確保訊息來自我們訂閱的那個頻道
+            if (topic === currentMqttTopic) {
+                try {
+                    const payload = JSON.parse(message.toString());
+                    
+                    // 過濾自己發出的
+                    if (payload.source === 'AlchemySystem') return;
+
+                    // 處理邏輯 (原本的內容)
+                    if (payload.test === true || (payload.message && !payload.diagnosis)) {
+                         console.log("🧪 [系統] 收到測試訊號");
+                         alert(`💬 來自醫館的訊息：\n\n${payload.message}`);
+                         return;
+                    }
+                    
+                    const patientData = payload.patientData || payload.data || payload;
+                    handleIncomingPatientData(patientData, 'MQTT');
+
+                } catch (e) {
+                    console.warn("[MQTT] 解析失敗:", e);
+                }
             }
         });
-    });
-    // [修正後] script.js - 放在 mqttClient.on('connect') 之後
 
-    mqttClient.on('message', (topic, message) => {
-        if (topic === MQTT_TOPIC) {
-            try {
-                const msgString = message.toString();
-                const payload = JSON.parse(msgString);
-
-                // 1. 過濾掉自己發出的訊息
-                if (payload.source === 'AlchemySystem') return;
-
-                console.log("📡 [MQTT] 收到外部資料:", payload);
-
-                // ★★★ 新增：優先攔截測試訊息 ★★★
-                // 如果對方說這是測試 (test: true)，或者只是一則純文字訊息
-                if (payload.test === true || (payload.message && !payload.diagnosis && !payload.patientData)) {
-                    console.log("🧪 [系統] 收到測試訊號");
-                    alert(`💬 來自醫館的訊息：\n\n${payload.message}`);
-                    return; // 處理完就結束，不往下走去掛號
-                }
-
-                // 2. 如果不是測試，才當作病患資料處理
-                // 這裡相容兩種格式：包在 patientData 裡面的，或是整包就是資料的
-                const patientData = payload.patientData || payload.data || payload;
-
-                // 交給掛號處處理
-                handleIncomingPatientData(patientData, 'MQTT');
-
-            } catch (e) {
-                console.warn("[MQTT] 解析失敗:", e);
-            }
-        }
-    });
-
-    mqttClient.on('error', (err) => {
-        console.error("[MQTT] 連線錯誤:", err);
-        updateMqttStatusUI(false);
-    });
-
-    mqttClient.on('offline', () => {
-        updateMqttStatusUI(false);
-    });
-
-} catch (e) {
-    console.warn("MQTT 初始化失敗 (可能未引入函式庫):", e);
+    } catch (e) {
+        console.error("MQTT 初始化失敗:", e);
+    }
 }
+
+// ==========================================
+// 4. 執行初始化
+// ==========================================
+// 在 script.js 載入時直接執行，或放在 window.onload 裡
+initMqttConnection();
 
 // (檢查 script.js 裡是否有這段，應該不用改，只要確認 ID 對應正確即可)
 function updateMqttStatusUI(isOnline) {
@@ -2736,6 +2766,8 @@ function checkPatientData() {
  * @param {Object} newData - 新收到的 JSON 資料
  * @param {String} sourceName - 來源名稱 ('MQTT', 'URL', 'Manual')
  */
+// [修正後] script.js - 智慧型資料處理中心 (支援差異比對)
+
 function handleIncomingPatientData(newData, sourceName) {
     console.log(`[系統] 收到來自【${sourceName}】的資料，進行比對...`);
 
@@ -2745,15 +2777,10 @@ function handleIncomingPatientData(newData, sourceName) {
         return;
     }
 
-    // 2. 取得新舊資料的關鍵特徵 (用名字或 Timestamp 來比對是否為同一份)
-    // 這裡我們抓取「名字」作為主要識別，你可以根據需求改抓 ID
-    const newName = newData.diagnosis?.diagnosed?.customerName || newData.customerName || "未知";
-
-    // 判斷當前是否已經有病患資料
+    // 2. 判斷當前是否已經有病患資料
     const hasExistingData = currentPatientData !== null;
-    const oldName = hasExistingData ? currentPatientData.name : "";
 
-    // --- 情況 A：目前完全沒資料 ---
+    // --- 情況 A：目前完全沒資料 -> 直接載入 ---
     if (!hasExistingData) {
         console.log("[系統] 目前無病患，直接載入。");
         loadPatientData(newData);
@@ -2761,35 +2788,106 @@ function handleIncomingPatientData(newData, sourceName) {
         return;
     }
 
-    // --- 情況 B：資料完全一樣 (重複收到) ---
-    // 這裡避免了「URL 載入張三，MQTT 又推播張三」導致的無意義彈窗
-    if (oldName === newName) {
-        console.log(`[系統] 偵測到相同病患 (${newName})，忽略此次更新。`);
-        return;
+    // --- 情況 B：有資料，進行深度比對 ---
+    // 呼叫剛剛寫好的比對函式
+    const diffs = getPatientDataDiffs(currentPatientData, newData);
+
+    // 如果差異列表是空的，代表資料完全一致
+    if (diffs.length === 0) {
+        console.log(`[系統] 資料完全一致，忽略此次更新。`);
+        return; 
     }
 
-    // --- 情況 C：資料不同，需要決定如何處理 ---
-
-    // ★ 關鍵邏輯：判斷是否為「網頁剛載入」階段 (例如啟動後 3 秒內)
-    // 如果是剛開網頁，MQTT 的資料權重 > URL，直接覆蓋不囉嗦
-    const systemUpTime = performance.now(); // 取得網頁已執行時間 (毫秒)
-    const isStartupPhase = systemUpTime < 3000;
+    // --- 情況 C：資料有變動，需要決定如何處理 ---
+    
+    // ★ 啟動階段 (3秒內) 強制覆蓋 (避免 URL 舊資料卡住 MQTT 新資料)
+    const systemUpTime = performance.now();
+    const isStartupPhase = systemUpTime < 3000; 
 
     if (sourceName === 'MQTT' && isStartupPhase) {
-        console.log("[系統] 啟動階段收到 MQTT 資料，優先權高於 URL，自動覆蓋。");
+        console.log("[系統] 啟動階段收到 MQTT 資料，自動覆蓋。");
         loadPatientData(newData);
         log(`✨ 已將病患資料更新為雲端最新版本`);
     } else {
-        // --- 情況 D：遊戲中途收到新資料 -> 禮貌詢問 ---
-        const confirmMsg = `⚠️ 收到新的病患資料！\n\n來源：${sourceName}\n新病患：${newName}\n\n目前正在診治：${oldName}\n\n請問要「覆蓋」目前的資料嗎？`;
-
+        // --- 情況 D：遊戲中途收到變動資料 -> 跳窗列出差異 ---
+        
+        // 組合提示訊息
+        let diffMsg = diffs.join('\n');
+        const confirmMsg = `⚠️ 收到病患資料變更！\n(來源：${sourceName})\n\n發現以下差異：\n${diffMsg}\n\n請問要「更新」目前的資料嗎？`;
+        
         if (confirm(confirmMsg)) {
-            console.log("[系統] 玩家確認覆蓋資料。");
+            console.log("[系統] 玩家確認更新資料。");
             loadPatientData(newData);
+            // 可以加個 Toast 提示更新成功
         } else {
-            console.log("[系統] 玩家拒絕覆蓋。");
+            console.log("[系統] 玩家拒絕更新。");
         }
     }
+}
+// script.js - 新增：比對病患資料差異的輔助函式
+
+function getPatientDataDiffs(current, rawNewData) {
+    const diffs = [];
+    
+    // 1. 解析新資料 (模擬 loadPatientData 的解析邏輯)
+    // 必須先將 rawNewData 轉成跟 current 一樣的格式才能比對
+    let newObj = {};
+    const diagnosed = rawNewData.diagnosis?.diagnosed;
+
+    if (diagnosed) {
+        // 新版完整格式
+        newObj.name = diagnosed.customerName || "未知";
+        newObj.element = diagnosed.constitution || "未知";
+        
+        // 毒素處理 (字串或物件轉字串)
+        if (typeof diagnosed.toxicity === 'object' && diagnosed.toxicity !== null) {
+            newObj.toxin = `${diagnosed.toxicity.current} / ${diagnosed.toxicity.max}`;
+        } else {
+            newObj.toxin = diagnosed.toxicity || "未知";
+        }
+
+        // 症狀處理 (轉成代碼陣列)
+        const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
+        newObj.symptoms = [];
+        if (Array.isArray(diagnosed.needs)) {
+            diagnosed.needs.forEach(n => {
+                if (n.code && codeMap[n.code]) newObj.symptoms.push(codeMap[n.code]);
+            });
+        }
+    } else {
+        // 舊版簡易格式 (Fallback)
+        newObj.name = rawNewData.customerName || "未知"; // 或是 timestamp
+        newObj.element = rawNewData.element || "未知";
+        newObj.toxin = rawNewData.maxToxin || rawNewData.toxinDisplay || "未知";
+        newObj.symptoms = rawNewData.symptoms || [];
+    }
+
+    // 2. 開始逐項比對
+    // 比對姓名
+    if (current.name !== newObj.name) {
+        diffs.push(`👤 姓名：${current.name} ➔ ${newObj.name}`);
+    }
+
+    // 比對五行
+    if (current.element !== newObj.element) {
+        diffs.push(`☯️ 五行：${current.element} ➔ ${newObj.element}`);
+    }
+
+    // 比對毒素 (current.toxinDisplay 是 UI 顯示的欄位名稱)
+    if (current.toxinDisplay !== newObj.toxin) {
+        diffs.push(`☠️ 毒素：${current.toxinDisplay} ➔ ${newObj.toxin}`);
+    }
+
+    // 比對症狀 (陣列比對)
+    // 先排序再轉字串比較，確保順序不同也被視為相同
+    const curSymStr = JSON.stringify(current.symptoms.sort());
+    const newSymStr = JSON.stringify(newObj.symptoms.sort());
+    if (curSymStr !== newSymStr) {
+        // 把代碼轉成中文描述比較好讀 (選用)
+        diffs.push(`🩺 症狀代碼有變動`);
+    }
+
+    return diffs;
 }
 // script.js - 修改 loadPatientData (改讀取 diagnosed 診斷結果)
 
@@ -3266,8 +3364,11 @@ function submitMedicinesToClinic() {
     } else {
         // 模式 2: MQTT
         if (mqttClient && mqttClient.connected) {
-            mqttClient.publish(MQTT_TOPIC, JSON.stringify(payloadObj));
-            alert("✨ [雲端] 丹藥已飛向遠方伺服器！");
+            // ★ 修改這裡：發送到當前的 currentMqttTopic (含有房間號的)
+            mqttClient.publish(currentMqttTopic, JSON.stringify(payloadObj), { retain: false });
+            
+            // alert("✨ [雲端] 丹藥已飛向遠方伺服器！");
+            showToast("✨ [雲端] 丹藥已送達診間！"); // 建議改用 Toast
         } else {
             alert("⚠️ 雲端連線尚未建立，無法傳送！請檢查網路或稍後再試。");
             return; // 中斷，不刪除背包物品
