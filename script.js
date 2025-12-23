@@ -2987,80 +2987,63 @@ function getPatientDataDiffs(current, rawNewData) {
 
     return diffs;
 }
-// script.js - 修改 loadPatientData (改讀取 diagnosed 診斷結果)
-
+// script.js - 修正：強力載入病患資料 (解決 Unknown 問題)
 function loadPatientData(data) {
-    console.log("[系統] 開始載入病患資料...");
+    console.log("[系統] 開始載入病患資料...", data);
+    
+    // 1. 初始化物件，並強制賦予 ID (沒有就用時間戳記補上)
     let patient = {};
+    patient.id = data.id || (data.diagnosis ? data.diagnosis.id : null) || `TEMP_${Date.now()}`;
 
-    // ★ 修改 1：改為檢查並讀取 diagnosis.diagnosed (診斷結果)
+    // 2. 嘗試從各種可能的結構中抓取資料
+    let source = data;
+    // 如果是來自問診系統的標準格式，資料會包在 diagnosis.diagnosed 裡面
     if (data.diagnosis && data.diagnosis.diagnosed) {
-        console.log("[系統] 讀取診斷結果資料 (diagnosed)");
-
-        // 取得診斷區塊
-        const diagnosed = data.diagnosis.diagnosed;
-
-        // 1. 姓名處理
-        if (diagnosed.customerName) {
-            patient.name = diagnosed.customerName;
-        } else {
-            // Fallback: 如果診斷沒寫名字，還是抓 timestamp 暫代
-            const timeCode = data.timestamp ? data.timestamp.split('T')[1].split('.')[0].replace(/:/g, '') : "Unknown";
-            patient.name = `病患-${timeCode}`;
-        }
-
-        // 2. 五行屬性 (讀取診斷的屬性)
-        patient.element = diagnosed.constitution;
-
-        // 3. 毒素處理 (★ 關鍵修改)
-        // diagnosed 的 toxicity 通常是字串 (如 "微毒")，但也保留對舊格式(物件)的相容性
-        if (typeof diagnosed.toxicity === 'object' && diagnosed.toxicity !== null) {
-            patient.toxinDisplay = `${diagnosed.toxicity.current} / ${diagnosed.toxicity.max}`;
-        } else {
-            // 如果是字串，直接顯示文字
-            patient.toxinDisplay = diagnosed.toxicity || "未知";
-        }
-
-        // 4. 症狀代碼轉換 (A~E -> 1~5)
-        // 邏輯不變，但來源改為 diagnosed.needs
-        const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
-        patient.symptoms = [];
-
-        if (Array.isArray(diagnosed.needs)) {
-            diagnosed.needs.forEach(need => {
-                if (need.code && codeMap[need.code]) {
-                    patient.symptoms.push(codeMap[need.code]);
-                }
-            });
-        }
-
-        patient.notes = "依據醫師診斷結果顯示";
-
-    } else {
-        // ★ 相容舊版簡單格式 (手動測試或舊資料)
-        if (!data.element) {
-            console.error("載入失敗：缺少必要欄位");
-            alert("匯入失敗：病患資料格式不完整");
-            renderNoPatientState();
-            return;
-        }
-        console.log("[系統] 識別為簡易測試格式");
-        patient = data;
-        // 舊版可能只有 maxToxin
-        patient.toxinDisplay = data.maxToxin || "未知";
+        source = data.diagnosis.diagnosed;
     }
 
-    // 更新全域變數
+    // 3. 抓取姓名 (優先順序：customerName -> name -> 預設值)
+    patient.name = source.customerName || source.name || data.name || "神秘客";
+
+    // 4. 抓取五行
+    patient.element = source.constitution || source.element || "無";
+
+    // 5. 抓取毒素 (處理物件或數值)
+    if (typeof source.toxicity === 'object' && source.toxicity !== null) {
+        patient.toxinDisplay = `${source.toxicity.current} / ${source.toxicity.max}`;
+    } else {
+        patient.toxinDisplay = source.toxicity || source.maxToxin || "未知";
+    }
+
+    // 6. 抓取症狀需求 (將代碼 A,B,C 轉為 1,2,3)
+    const codeMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5 };
+    patient.symptoms = [];
+    if (Array.isArray(source.needs)) {
+        source.needs.forEach(need => {
+            if (need.code && codeMap[need.code]) {
+                patient.symptoms.push(codeMap[need.code]);
+            }
+        });
+    }
+
+    // 7. 備註
+    patient.notes = source.notes || "依據醫師診斷結果顯示";
+
+    // --- 更新全域變數與 UI ---
     currentPatientData = patient;
 
-    // 呼叫渲染 UI
-    renderPatientInfo(patient);
+    // 呼叫渲染函式 (如果有定義的話)
+    if(typeof renderPatientInfo === 'function') {
+        renderPatientInfo(patient);
+    }
 
-    // ★★★ 新增：載入成功後，自動展開面板並亮起按鈕 ★★★
+    // 自動展開面板 (讓使用者看到資料來了)
     const panel = document.getElementById('patient-info-panel');
     const btn = document.getElementById('toggle-patient-btn');
     if (panel) panel.classList.remove('hidden');
     if (btn) btn.classList.add('active');
+    
+    console.log(`[系統] 病患資料載入完成: ${patient.name} (ID: ${patient.id})`);
 }
 // [修正後] script.js - 靜態資料檢查 (URL / LocalStorage)
 // 邏輯變更：找到資料後，不再直接 loadPatientData，而是交給 handleIncomingPatientData 統一處理
@@ -3499,43 +3482,48 @@ const clinicChannel = new BroadcastChannel('alchemy_clinic_channel');
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-// script.js - 修正：配合醫館頻道的正確發送版本
+// script.js - 修正：提交藥品 (二次確認 + 修正傳輸邏輯)
 function submitMedicinesToClinic() {
-    // 1. 檢查選取
+    // 1. 檢查是否選取藥品
     if (typeof selectedDeliveryIndices === 'undefined' || selectedDeliveryIndices.length === 0) {
         if(typeof showToast === 'function') showToast("請至少選擇一種藥品！");
         return;
     }
 
-    // 2. 準備 Room ID (確保是字串)
+    // 2. 準備 Room ID (從網址抓，預設 1223)
     const urlParams = new URLSearchParams(window.location.search);
     const currentRoomId = urlParams.get('room_id') || urlParams.get('room') || "1223";
 
-    // 鎖定按鈕
-    const btn = document.getElementById('confirm-delivery-btn');
-    if (btn) btn.disabled = true;
-
-    // 3. 準備病患 ID (修正 undefined 問題)
+    // 3. 準備病患資訊 (優先抓名字)
     let targetId = null; 
     let targetName = "Unknown";
     
-    // 嚴格檢查 currentPatientData 是否存在
-    if (typeof currentPatientData !== 'undefined' && currentPatientData && currentPatientData.id) {
+    if (currentPatientData) {
+        targetName = currentPatientData.name || "Unknown";
+        // 如果是 TEMP_ 開頭的假 ID，我們依然傳送它，或者是傳 null 也可以
+        // 為了讓醫館好做事，我們這裡傳送 ID (即使是假的)
         targetId = currentPatientData.id;
-        targetName = currentPatientData.name;
     }
 
-    // 4. 準備藥品
+    // ★★★ 新增：二次確認視窗 ★★★
+    const confirmMsg = `即將提交 ${selectedDeliveryIndices.length} 份藥品\n給病患：【${targetName}】\n(房號: ${currentRoomId})\n\n確定要送出嗎？`;
+    if (!confirm(confirmMsg)) {
+        return; // 玩家取消，停止執行
+    }
+
+    // 鎖定按鈕，避免連點
+    const btn = document.getElementById('confirm-delivery-btn');
+    if (btn) btn.disabled = true;
+
+    // 4. 準備 Payload (資料包)
     const selectedMedicines = selectedDeliveryIndices.map(index => inventoryStorage[index]);
     
-    // 5. 建構 Payload
-    // 根據醫館的訂閱路徑推測，他們可能需要標準結構
     const payload = {
         type: 'MEDICINE_DELIVERY', 
         roomId: currentRoomId,
         senderId: 'ALCHEMY_SYSTEM',
-        // ★★★ 修正：確保這裡是 null 而不是 undefined ★★★
-        targetPatientId: targetId, 
+        targetPatientId: targetId,
+        patientName: targetName, // 多傳一個名字欄位備用
         medicines: selectedMedicines,
         timestamp: Date.now()
     };
@@ -3543,22 +3531,19 @@ function submitMedicinesToClinic() {
     const payloadString = JSON.stringify(payload);
     console.log("🚀 [傳輸] 正在發送至 thirza/alchemy/v1:", payload);
 
-    // 6. 執行傳輸 (修正頻道 Topic)
+    // 5. 執行傳輸
     let isSent = false;
     
     if (transmissionMode === 'MQTT' && mqttClient && mqttClient.connected) {
-        
-        // ★★★ 關鍵修正：改成醫館正在聽的頻道 ★★★
-        
-        // 1. 發送到通用頻道
+        // 發送給醫館的主頻道
         mqttClient.publish('thirza/alchemy/v1', payloadString);
-        
-        // 2. 發送到房間專屬頻道 (這是醫館 Console 顯示它有在聽的)
+        // 發送給房間專屬頻道 (雙重保險)
         mqttClient.publish(`thirza/alchemy/v1/${currentRoomId}`, payloadString);
-
-        console.log(`📡 [MQTT] 已發送至 thirza/alchemy/v1 及 /${currentRoomId}`);
         
+        console.log(`📡 [MQTT] 已發送`);
         isSent = true;
+        
+        // 顯示成功通知
         if(typeof showToast === 'function') showToast(`✅ 已發送給 ${targetName}`);
 
     } else {
@@ -3566,13 +3551,14 @@ function submitMedicinesToClinic() {
         if (typeof broadcastChannel !== 'undefined' && broadcastChannel) {
             broadcastChannel.postMessage(payload);
             isSent = true;
+            if(typeof showToast === 'function') showToast(`✅ (廣播) 已發送給 ${targetName}`);
         } else {
             console.error("❌ MQTT 未連線");
-            alert("網路未連線！");
+            alert("網路未連線！無法傳送。");
         }
     }
 
-    // 7. 後續處理 (扣庫存)
+    // 6. 後續處理 (成功才扣庫存)
     if (isSent) {
         selectedDeliveryIndices.sort((a, b) => b - a);
         selectedDeliveryIndices.forEach(index => {
@@ -3585,6 +3571,7 @@ function submitMedicinesToClinic() {
         closeDeliveryModal();
     } 
 
+    // 解鎖按鈕
     if (btn) btn.disabled = false;
 }
 // script.js - 初始化玩家紀錄 (雙重確認)
@@ -3776,28 +3763,36 @@ function refreshDiscoveredCache() {
 
     console.log(`[系統] 配方探索快取已更新，共發現 ${discoveredRecipeCache.size} 種配方`);
 }
-// script.js - 新增：顯示浮動提示 (Toast)
+// script.js - 修正：Toast 通知改到上方顯示
 function showToast(msg, duration = 2000) {
     const toast = document.createElement('div');
     toast.textContent = msg;
+    
+    // --- 樣式設定 ---
     toast.style.position = 'fixed';
-    toast.style.bottom = '10%';
+    // ★★★ 修改：改為上方顯示 (top: 15% 大約在視窗上方 1/6 處) ★★★
+    toast.style.top = '15%'; 
     toast.style.left = '50%';
     toast.style.transform = 'translateX(-50%)';
-    toast.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    
+    toast.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'; // 稍微深一點
     toast.style.color = '#fff';
-    toast.style.padding = '12px 24px';
-    toast.style.borderRadius = '25px';
+    toast.style.padding = '15px 30px'; //稍微大一點
+    toast.style.borderRadius = '30px';
     toast.style.zIndex = '9999';
-    toast.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-    toast.style.fontSize = '1rem';
-    toast.style.transition = 'opacity 0.3s';
+    toast.style.boxShadow = '0 4px 15px rgba(0,0,0,0.5)';
+    toast.style.fontSize = '1.1rem';
+    toast.style.fontWeight = 'bold';
+    toast.style.border = '1px solid #d4af37'; // 加個金邊比較高級
+    toast.style.transition = 'opacity 0.3s, transform 0.3s';
+    toast.style.pointerEvents = 'none'; // 讓滑鼠可以穿透，不擋操作
     
     document.body.appendChild(toast);
 
-    // 淡出移除
+    // 淡出移除動畫
     setTimeout(() => {
         toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(-20px)'; // 往上飄走
         setTimeout(() => toast.remove(), 300);
     }, duration);
 }
