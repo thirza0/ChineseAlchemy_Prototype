@@ -3324,8 +3324,7 @@ function clearPatientData() {
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-
-// script.js - 修正：開啟交付視窗並生成列表
+// script.js - 修正：開啟交付視窗並生成列表 (修復品質 undefined 問題)
 function openDeliveryModal() {
     const modal = document.getElementById('delivery-modal');
     if (!modal) return;
@@ -3361,11 +3360,13 @@ function openDeliveryModal() {
             row.style.alignItems = "center";
             row.style.fontSize = "0.9rem";
 
-            // 判斷品質顏色
+            // ★★★ 修正點 1：這裡原本寫 item.grade，改回 item.quality ★★★
             let qualityColor = "#fff";
-            if (item.grade === 'S') qualityColor = "#FFD700";
-            else if (item.grade === 'A') qualityColor = "#d4af37";
-            else if (item.grade === 'B') qualityColor = "#3498db";
+            if (item.quality === 'U') qualityColor = "#d4af37"; // 補上 U 級顏色
+            else if (item.quality === 'S') qualityColor = "#FFD700";
+            else if (item.quality === 'A') qualityColor = "#d4af37";
+            else if (item.quality === 'B') qualityColor = "#3498db";
+            else if (item.quality === 'D') qualityColor = "#777";
             
             // 毒素警告
             const toxinClass = item.toxin > 30 ? "warn" : "";
@@ -3375,7 +3376,9 @@ function openDeliveryModal() {
                     <input type="checkbox" onchange="toggleDeliverySelection(${index}, this)">
                 </div>
                 <div style="font-weight:bold; color:${qualityColor};">${item.name}</div>
-                <div>${item.grade}</div>
+                
+                <div style="color:${qualityColor}; font-weight:bold;">${item.quality}</div>
+                
                 <div style="color:${ElementColors[item.element] || '#ccc'}">${item.element}</div>
                 <div style="font-family:monospace; color:#888;">${item.effectId || '---'}</div>
                 <div class="${toxinClass}">${item.toxin}%</div>
@@ -3494,7 +3497,7 @@ const clinicChannel = new BroadcastChannel('alchemy_clinic_channel');
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-// script.js - 修改：提交藥品至醫館
+/// script.js - 修正：提交藥品至醫館 (修復 saveInventoryToStorage is not defined)
 function submitMedicinesToClinic() {
     if (selectedDeliveryIndices.length === 0) {
         alert("請至少選擇一種藥品！");
@@ -3507,19 +3510,17 @@ function submitMedicinesToClinic() {
     // 準備傳送的資料包
     const payload = {
         type: 'MEDICINE_DELIVERY',
-        senderId: 'ALCHEMY_SYSTEM', // 或是你的 Client ID
-        targetPatientId: currentPatientData ? currentPatientData.id : null, // 確保有對應病患
+        senderId: 'ALCHEMY_SYSTEM',
+        targetPatientId: currentPatientData ? currentPatientData.id : null,
         medicines: selectedMedicines,
         timestamp: Date.now()
     };
 
     // 傳送邏輯
     if (transmissionMode === 'MQTT' && mqttClient && mqttClient.connected) {
-        // MQTT 模式
         mqttClient.publish('alchemy/clinic/delivery', JSON.stringify(payload));
         log(`[MQTT] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
     } else {
-        // 本地/廣播模式
         if (broadcastChannel) {
             broadcastChannel.postMessage(payload);
             log(`[廣播] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
@@ -3528,29 +3529,26 @@ function submitMedicinesToClinic() {
         }
     }
 
-    // --- 移除背包中的藥品 (因為已經送出了) ---
+    // --- 移除背包中的藥品 ---
     // 必須從後往前刪，避免 index 跑掉
     selectedDeliveryIndices.sort((a, b) => b - a);
     selectedDeliveryIndices.forEach(index => {
         inventoryStorage.splice(index, 1);
     });
-    saveInventoryToStorage(); // 存檔
+
+    // ★★★ 修正點：改為呼叫正確的 saveInventory() ★★★
+    // 你的腳本裡定義的是 saveInventory，不是 saveInventoryToStorage
+    saveInventory(); 
 
     // --- UI 反饋與關閉 ---
-    
-    // 1. 顯示簡單提示 (如果 showToast 有定義就用，沒有就略過)
     if (typeof showToast === 'function') {
         showToast("藥品已送達醫館！");
     }
 
-    // 2. 彈出確認視窗 (使用者要求)
     alert(`已成功將 ${selectedMedicines.length} 份藥品送往醫館！\n背包庫存已更新。`);
 
-    // 3. ★★★ 關鍵：關閉提交視窗 ★★★
     closeDeliveryModal();
-
-    // 4. (選用) 重新整理背包顯示，避免背景的背包還是舊的
-    renderInventoryList();
+    renderInventory(); // 更新背包介面
 }
 // script.js - 切換病歷面板顯示/隱藏
 function togglePatientPanel() {
