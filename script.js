@@ -254,8 +254,8 @@ function setTransmissionMode(mode) {
         }
     }
 }
-// --- 2. 初始化與主要流程 ---
 // script.js - 修改 window.onload
+
 window.onload = function () {
     log("系統啟動中...");
     if (typeof MaterialDB === 'undefined' || typeof RecipeDB === 'undefined' || typeof TextDB === 'undefined') {
@@ -269,19 +269,18 @@ window.onload = function () {
     }
     log("系統啟動完成 (v13.0 Inventory Added)");
 
-    // ★ 務必確認這行存在
+    // 1. 載入資料
     checkPatientData();
-
     loadHistoryFromStorage();
     loadInventoryFromStorage();
 
-    // ★★★ 修改處：先顯示說明視窗，關閉後才選流派 ★★★
-    // 呼叫顯示說明視窗函式
-    showInstructionModal();
+    // ★★★ 新增：初始化配方快取 (優化效能) ★★★
+    refreshDiscoveredCache();
 
+    // 2. 介面初始化
+    showInstructionModal();
     setupMapInteractions();
     updateZoomUI();
-    // ★ 新增這行：初始化時同步核取方塊狀態
     syncMapHintUI();
 };
 // script.js - 新增函式
@@ -698,6 +697,8 @@ function calculateAllRecipeCoordinates() {
     drawRecipeMap();
 }
 
+// script.js - 修改 setupMapInteractions
+
 function setupMapInteractions() {
     const canvas = document.getElementById('recipe-map');
     if (!canvas) return;
@@ -719,7 +720,7 @@ function setupMapInteractions() {
     });
 
     window.addEventListener('mousemove', (e) => {
-        // ── 拖曳地圖 ──
+        // 1. 拖曳邏輯 (保持不變)
         if (isMapDragging) {
             const dx = e.clientX - lastMouseX;
             const dy = e.clientY - lastMouseY;
@@ -730,16 +731,23 @@ function setupMapInteractions() {
             mapPanY += dy;
 
             checkMapBoundaries(canvas.width, canvas.height);
-            drawRecipeMap();
+            
+            // ★ 改用節流請求
+            requestMapRedraw(); 
             return;
         }
 
-        // ── ⭐ Hover tooltip（關鍵補回來的部分） ──
+        // 2. Hover Tooltip 邏輯
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        drawRecipeMap(mouseX, mouseY);
+        // 更新全域滑鼠位置 (讓 drawRecipeMap 讀取)
+        mapMouseX = mouseX;
+        mapMouseY = mouseY;
+
+        // ★ 改用節流請求，而不是直接 drawRecipeMap()
+        requestMapRedraw();
     });
 
     window.addEventListener('mouseup', () => {
@@ -749,10 +757,23 @@ function setupMapInteractions() {
 
     // ===== 滑鼠離開畫布時清除 hover =====
     canvas.addEventListener('mouseleave', () => {
+        mapMouseX = null;
+        mapMouseY = null;
         if (!isMapDragging) {
-            drawRecipeMap(); // hoverX = null → tooltip 消失
+            requestMapRedraw();
         }
     });
+}
+
+// ★★★ 新增：地圖重繪請求器 (節流閥) ★★★
+function requestMapRedraw() {
+    if (!isMapRedrawPending) {
+        isMapRedrawPending = true;
+        requestAnimationFrame(() => {
+            drawRecipeMap(); // 真正執行繪圖
+            isMapRedrawPending = false; // 解鎖，允許下一次請求
+        });
+    }
 }
 
 
@@ -1102,25 +1123,12 @@ function drawDanIcon(ctx, x, y, radius, text, isGold = true) {
 
     ctx.restore();
 }
-// 輔助：判斷配方是否已發現 (檢查歷史紀錄與背包)
+// script.js - 修改 isRecipeDiscovered
+
 function isRecipeDiscovered(nameId) {
-    // 1. 檢查背包
-    const inInventory = inventoryStorage.some(item =>
-        TextDB[item.nameId] === TextDB[nameId] // 比對名稱，或直接比對 item.id === nameId (視資料結構而定)
-    );
-    if (inInventory) return true;
-
-    // 2. 檢查歷史紀錄 (三種流派都要查)
-    for (const key in historyStorage) {
-        const list = historyStorage[key];
-        const inHistory = list.some(item => {
-            // 歷史紀錄的 name 是字串，RecipeDB 的 nameId 是數字，需透過 TextDB 轉換比對
-            return item.name === TextDB[nameId];
-        });
-        if (inHistory) return true;
-    }
-
-    return false;
+    // ★★★ 優化後：直接查表，不再跑迴圈 ★★★
+    // 複雜度從 O(N) 降為 O(1)
+    return discoveredRecipeCache.has(nameId);
 }
 // script.js - 請新增此函式
 
@@ -2046,7 +2054,8 @@ window.toggleResultView = function () {
     // ★★★ 關鍵：通知地圖重新繪製，地圖會根據 isShowingPreviousResult 決定畫哪個點 ★★★
     drawRecipeMap();
 };
-// (此函式若與您目前一致可不需修改，僅供檢查)
+// script.js - 修改 saveToHistory
+
 function saveToHistory(data) {
     let item = { ...data, time: new Date().toLocaleTimeString() };
 
@@ -2058,6 +2067,10 @@ function saveToHistory(data) {
 
     // 寫入 LocalStorage
     localStorage.setItem('alchemy_history_storage', JSON.stringify(historyStorage));
+    
+    // ★★★ 新增：當有新紀錄產生時，更新快取，確保地圖顯示正確 ★★★
+    // (如果這是新發現的配方，這裡更新後，地圖上的鎖頭就會打開)
+    refreshDiscoveredCache();
 }
 
 function loadHistoryFromStorage() {
@@ -3516,6 +3529,41 @@ function generateUniqueBatchID() {
     }
 
     return newId;
+}
+// script.js - 新增優化用的全域變數與函式
+
+// --- 優化 1: 渲染節流鎖 ---
+let isMapRedrawPending = false; 
+
+// --- 優化 2: 已探索配方快取 (Set 結構查詢速度極快) ---
+let discoveredRecipeCache = new Set();
+
+// 更新快取的函式 (只在載入或存檔時呼叫)
+function refreshDiscoveredCache() {
+    discoveredRecipeCache.clear();
+
+    // 1. 掃描背包
+    inventoryStorage.forEach(item => {
+        // 這裡需要反查 nameId，或者如果 item 裡有 nameId 最好
+        // 假設 item 保留了原始資料結構，或是透過 TextDB 比對 name
+        // 為了效能，我們這邊用比較寬鬆的 TextDB 比對
+        for (const [id, name] of Object.entries(TextDB)) {
+            if (name === item.name) discoveredRecipeCache.add(parseInt(id));
+        }
+    });
+
+    // 2. 掃描歷史紀錄 (所有流派)
+    ['NEUTRAL', 'EXTEND', 'BIAS'].forEach(mode => {
+        if (historyStorage[mode]) {
+            historyStorage[mode].forEach(item => {
+                for (const [id, name] of Object.entries(TextDB)) {
+                    if (name === item.name) discoveredRecipeCache.add(parseInt(id));
+                }
+            });
+        }
+    });
+
+    console.log(`[系統] 配方探索快取已更新，共發現 ${discoveredRecipeCache.size} 種配方`);
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {
