@@ -110,7 +110,7 @@ const CLINIC_URL = "https://lindaagilebyte.github.io/Prototype_03/"; // 範例
 // script.js - 全域變數區新增
 
 // --- 通訊設定 ---
-let transmissionMode = 'BROADCAST'; // 預設模式: 'BROADCAST' or 'MQTT'
+let transmissionMode = 'MQTT'; // 預設模式: 'BROADCAST' or 'MQTT'
 const broadcastChannel = new BroadcastChannel('alchemy_clinic_channel');
 // script.js - 修改 MQTT 初始化區塊
 
@@ -1179,16 +1179,56 @@ function drawTooltip(ctx, text, x, y, cw, ch) {
     ctx.textBaseline = "middle";
     ctx.fillText(text, tx + boxWidth / 2, ty + boxHeight / 2);
 }
+// script.js - 新增：根據材料種類與顏色生成 SVG Icon
+function getMaterialSVG(key, color) {
+    // 預設 SVG 屬性
+    const size = 40; // Icon 大小
+    const commonStyle = `width:${size}px; height:${size}px; fill:${color}; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); transition: all 0.3s;`;
+    
+    // 定義路徑 (Paths)
+    const paths = {
+        // 1. 礦石/石塊 (丹砂, 雄黃, 赤石脂...)
+        ORE: "M12,2L4,8V20L10,22L20,18L22,6L12,2M11,18L6,16V9L11,6V18M13,17V6.5L19,8.5V16L13,17Z", 
+        // 2. 金屬/錠 (黃金, 銅, 黑鉛...)
+        METAL: "M3,6H21V18H3V6M4,13H20V8H4V13M4,17H20V15H4V17Z", 
+        // 3. 液體/滴狀 (水銀, 松脂...)
+        LIQUID: "M12,2C12,2 5,11 5,16A7,7 0 0,0 12,23A7,7 0 0,0 19,16C19,11 12,2 12,2M12,20A4,4 0 0,1 8,16C8,13.5 12,5.5 12,5.5C12,5.5 16,13.5 16,16A4,4 0 0,1 12,20Z", 
+        // 4. 晶體/碎片 (石膏, 雲母, 硝石, 石英...)
+        CRYSTAL: "M12.87,2.05L21.35,10.53L12.87,19.01L4.39,10.53L12.87,2.05M12.87,5.59L7.92,10.53L12.87,15.47L17.82,10.53L12.87,5.59M5.83,21.5L8.66,18.67L5.83,15.84L3,18.67L5.83,21.5M19.92,21.5L22.75,18.67L19.92,15.84L17.09,18.67L19.92,21.5Z", 
+        // 5. 粉末/堆狀 (硫磺, 黃丹, 松煙...)
+        POWDER: "M12,19A1,1 0 0,1 11,20A1,1 0 0,1 10,19A1,1 0 0,1 11,18A1,1 0 0,1 12,19M16,19A1,1 0 0,1 15,20A1,1 0 0,1 14,19A1,1 0 0,1 15,18A1,1 0 0,1 16,19M13,16A1,1 0 0,1 12,17A1,1 0 0,1 11,16A1,1 0 0,1 12,15A1,1 0 0,1 13,16M17,16A1,1 0 0,1 16,17A1,1 0 0,1 15,16A1,1 0 0,1 16,15A1,1 0 0,1 17,16M9,16A1,1 0 0,1 8,17A1,1 0 0,1 7,16A1,1 0 0,1 8,15A1,1 0 0,1 9,16M12,13A1,1 0 0,1 11,14A1,1 0 0,1 10,13A1,1 0 0,1 11,12A1,1 0 0,1 12,13M20,19A1,1 0 0,1 19,20A1,1 0 0,1 18,19A1,1 0 0,1 19,18A1,1 0 0,1 20,19M8,19A1,1 0 0,1 7,20A1,1 0 0,1 6,19A1,1 0 0,1 7,18A1,1 0 0,1 8,19M4,19A1,1 0 0,1 3,20A1,1 0 0,1 2,19A1,1 0 0,1 3,18A1,1 0 0,1 4,19M16,13A1,1 0 0,1 15,14A1,1 0 0,1 14,13A1,1 0 0,1 15,12A1,1 0 0,1 16,13Z"
+    };
 
-// --- 4. 材料與秤重 ---
+    // 簡單的分類對應 (依據 Key 判斷類型)
+    let type = "ORE"; // 預設
+
+    const metals = ["HUANG_JIN", "TONG", "HEI_QIAN", "XUAN_TIE"];
+    const liquids = ["SHUI_YIN", "SONG_ZHI"]; // 松脂算半液體
+    const crystals = ["ZHONG_RU_SHI", "SHI_GAO", "BAI_YU", "YUN_MU", "BAI_SHI_YING", "ZI_SHI_YING", "XIAO_SHI", "ZENG_QING", "KONG_QING"];
+    const powders = ["SHI_LIU_HUANG", "HUANG_DAN", "SONG_YAN"];
+
+    if (metals.includes(key)) type = "METAL";
+    else if (liquids.includes(key)) type = "LIQUID";
+    else if (crystals.includes(key)) type = "CRYSTAL";
+    else if (powders.includes(key)) type = "POWDER";
+    
+    // 產生 SVG 字串
+    return `
+        <div class="mat-icon-wrapper">
+            <svg viewBox="0 0 24 24" style="${commonStyle}">
+                <path d="${paths[type]}"></path>
+            </svg>
+        </div>
+    `;
+}
+
+// script.js - 修改 initMaterialGrid (整合 Icon)
 function initMaterialGrid() {
     const grid = document.getElementById('material-grid');
     if (!grid) return;
 
     grid.innerHTML = "";
     grid.style.display = '';
-
-    // 確保 class 正確，以便 CSS 切換佈局
     grid.className = "panel-view";
 
     for (let key in MaterialDB) {
@@ -1198,22 +1238,18 @@ function initMaterialGrid() {
         btn.id = `mat-btn-${key}`;
 
         const matName = TextDB[mat.nameId] || key;
+        
+        // ★ 呼叫新函式取得 Icon HTML (傳入 key 和 DB 中的顏色)
+        const iconHtml = getMaterialSVG(key, mat.color);
 
-        // ★ 取得對應屬性的顏色 (從 data.js 的 ElementColors 拿)
-        // 注意：hover 時背景會變金黃色，所以這裡文字顏色可能需要一點陰影或調整
-        // 但為了簡單，我們讓五行文字在 hover 後顯示為深色粗體即可
-
-        // ★★★ 修改處：建構支援滑動特效的 HTML ★★★
         btn.innerHTML = `
+            ${iconHtml}
             <div class="mat-name-label">${matName}</div>
             <div class="mat-info-slide">
                 <div>五行：<strong>${mat.element}</strong></div>
                 <div>強度：<strong>${mat.max}</strong></div>
             </div>
         `;
-
-        // 移除原本的 title 屬性，因為現在資訊已經直接顯示在 UI 上了，不需要瀏覽器的原生提示框來干擾
-        // btn.title = ... (已移除)
 
         btn.onclick = () => selectMaterial(key);
         grid.appendChild(btn);

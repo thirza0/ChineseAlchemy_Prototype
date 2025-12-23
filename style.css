@@ -13,6 +13,11 @@ body {
     align-items: center;
     height: 100vh;
     overflow: hidden;
+    /* --- 新增的優化 (防止全域文字被選取) --- */
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* IE10+/Edge */
+    user-select: none;         /* Standard */
 }
 
 #app-container {
@@ -32,7 +37,36 @@ body {
     overflow: hidden;
     position: relative;
 }
+/* style.css - 優化：全域卷軸美化 (Webkit browsers) */
 
+/* 卷軸寬度 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+/* 卷軸軌道 (背景) */
+::-webkit-scrollbar-track {
+    background: #1a1a1a; 
+    border-radius: 4px;
+}
+
+/* 卷軸拉桿 (本體) */
+::-webkit-scrollbar-thumb {
+    background: #444; 
+    border-radius: 4px;
+    border: 1px solid #1a1a1a;
+}
+
+/* 滑鼠移過去時變亮 */
+::-webkit-scrollbar-thumb:hover {
+    background: #d4af37; /* 呼應你的主題金 */
+}
+
+/* 邊角 */
+::-webkit-scrollbar-corner {
+    background: #1a1a1a;
+}
 /* =========================================
    2. 抬頭顯示器 (HUD / Header)
    ========================================= */
@@ -197,6 +231,7 @@ body {
     position: relative;
     overflow: hidden;
     /* ★ 關鍵：隱藏超出範圍的內容 */
+    will-change: transform, box-shadow; /* ★ 新增這行 */
 }
 
 .mat-btn:hover {
@@ -253,7 +288,51 @@ body {
     /* 回到原位 */
     margin-top: 5px;
 }
+/* style.css - 材料按鈕優化 */
 
+/* 1. Icon 容器 */
+.mat-icon-wrapper {
+    margin-bottom: 5px; /* Icon 與文字的間距 */
+    z-index: 1;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 彈性動畫 */
+}
+
+/* 2. 按鈕 Hover 時的效果 */
+.mat-btn:hover .mat-icon-wrapper {
+    transform: scale(1.2) translateY(-5px); /* 放大並上浮 */
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6)); /* 增加光暈 */
+}
+
+.mat-btn:hover svg {
+    /* 這裡可以選擇要不要在 hover 時改變顏色，
+       目前保持原色(DB色)，因為背景變金了，對比通常足夠 */
+}
+
+/* 3. 選中狀態 (Selected) */
+.mat-btn.selected-mat .mat-icon-wrapper {
+    transform: scale(1.1);
+}
+
+/* 4. 調整文字位置以配合 Icon */
+.mat-name-label {
+    font-size: 1rem; /* 字稍微縮小一點點，平衡視覺 */
+    font-weight: bold;
+    transition: all 0.3s ease;
+    transform: translateY(0);
+    z-index: 2;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8); /* 增加文字陰影，確保在淺色 Icon 上也看得清楚 */
+}
+
+/* Hover 時文字稍微縮小並往下移，讓位給展開的資訊欄 */
+.mat-btn:hover .mat-name-label {
+    transform: translateY(-2px) scale(0.9);
+}
+
+/* 修正資訊欄的顏色，確保在金色背景上清晰 */
+.mat-info-slide {
+    color: #1a1a1a; /* 深色文字 */
+    font-weight: bold;
+}
 .mode-btn {
     width: 200px;
     height: 120px;
@@ -265,6 +344,7 @@ body {
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative;
     overflow: hidden;
+    will-change: transform; /* ★ 新增這行 */
 }
 
 .mode-btn:hover {
@@ -1201,13 +1281,6 @@ input[type=range] {
     flex-direction: column;
     overflow: hidden;
     border-bottom: 1px solid #333;
-}
-
-#console-output {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-    color: #4CAF50;
 }
 
 /* 下半部：Map (50% or fixed) */
