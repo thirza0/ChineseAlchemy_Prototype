@@ -3499,91 +3499,93 @@ const clinicChannel = new BroadcastChannel('alchemy_clinic_channel');
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-// script.js - 修正：提交藥品 (移除 blocking alert，確保傳輸)
+// script.js - 修正：配合醫館頻道的正確發送版本
 function submitMedicinesToClinic() {
-    // 防呆檢查
+    // 1. 檢查選取
     if (typeof selectedDeliveryIndices === 'undefined' || selectedDeliveryIndices.length === 0) {
         if(typeof showToast === 'function') showToast("請至少選擇一種藥品！");
         return;
     }
 
-    // 1. 鎖定按鈕避免重複提交
+    // 2. 準備 Room ID (確保是字串)
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentRoomId = urlParams.get('room_id') || urlParams.get('room') || "1223";
+
+    // 鎖定按鈕
     const btn = document.getElementById('confirm-delivery-btn');
     if (btn) btn.disabled = true;
 
-    // 2. 取得選中的藥品物件
+    // 3. 準備病患 ID (修正 undefined 問題)
+    let targetId = null; 
+    let targetName = "Unknown";
+    
+    // 嚴格檢查 currentPatientData 是否存在
+    if (typeof currentPatientData !== 'undefined' && currentPatientData && currentPatientData.id) {
+        targetId = currentPatientData.id;
+        targetName = currentPatientData.name;
+    }
+
+    // 4. 準備藥品
     const selectedMedicines = selectedDeliveryIndices.map(index => inventoryStorage[index]);
     
-    // 3. 建構 Payload
+    // 5. 建構 Payload
+    // 根據醫館的訂閱路徑推測，他們可能需要標準結構
     const payload = {
-        type: 'MEDICINE_DELIVERY',
+        type: 'MEDICINE_DELIVERY', 
+        roomId: currentRoomId,
         senderId: 'ALCHEMY_SYSTEM',
-        targetPatientId: currentPatientData ? currentPatientData.id : null,
-        medicines: selectedMedicines, // 傳送完整的藥品物件
+        // ★★★ 修正：確保這裡是 null 而不是 undefined ★★★
+        targetPatientId: targetId, 
+        medicines: selectedMedicines,
         timestamp: Date.now()
     };
 
-    console.log("[傳輸] 準備發送藥品:", payload);
+    const payloadString = JSON.stringify(payload);
+    console.log("🚀 [傳輸] 正在發送至 thirza/alchemy/v1:", payload);
 
-    // 4. 執行傳輸 (MQTT / Broadcast)
+    // 6. 執行傳輸 (修正頻道 Topic)
     let isSent = false;
+    
     if (transmissionMode === 'MQTT' && mqttClient && mqttClient.connected) {
-        mqttClient.publish('alchemy/clinic/delivery', JSON.stringify(payload));
-        log(`[MQTT] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
+        
+        // ★★★ 關鍵修正：改成醫館正在聽的頻道 ★★★
+        
+        // 1. 發送到通用頻道
+        mqttClient.publish('thirza/alchemy/v1', payloadString);
+        
+        // 2. 發送到房間專屬頻道 (這是醫館 Console 顯示它有在聽的)
+        mqttClient.publish(`thirza/alchemy/v1/${currentRoomId}`, payloadString);
+
+        console.log(`📡 [MQTT] 已發送至 thirza/alchemy/v1 及 /${currentRoomId}`);
+        
         isSent = true;
+        if(typeof showToast === 'function') showToast(`✅ 已發送給 ${targetName}`);
+
     } else {
+        // 本地廣播 (備用)
         if (typeof broadcastChannel !== 'undefined' && broadcastChannel) {
             broadcastChannel.postMessage(payload);
-            log(`[廣播] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
             isSent = true;
         } else {
-            console.error("[傳輸失敗] 無可用的傳輸管道");
+            console.error("❌ MQTT 未連線");
+            alert("網路未連線！");
         }
     }
 
-    // 5. 扣除庫存 (從後往前刪)
-    selectedDeliveryIndices.sort((a, b) => b - a);
-    selectedDeliveryIndices.forEach(index => {
-        inventoryStorage.splice(index, 1);
-    });
-    
-    // 6. 存檔與更新 UI
-    saveInventory(); // 確認函式名稱正確
-    if (typeof renderInventory === 'function') renderInventory(); 
+    // 7. 後續處理 (扣庫存)
+    if (isSent) {
+        selectedDeliveryIndices.sort((a, b) => b - a);
+        selectedDeliveryIndices.forEach(index => {
+            inventoryStorage.splice(index, 1);
+        });
+        
+        saveInventory(); 
+        if (typeof renderInventory === 'function') renderInventory(); 
+        
+        closeDeliveryModal();
+    } 
 
-    // 7. 使用 Toast 提示並關閉視窗 (取代 alert)
-    if(isSent) {
-        if(typeof showToast === 'function') {
-            showToast(`✅ 已成功送出 ${selectedMedicines.length} 份藥品！`);
-        }
-    } else {
-        if(typeof showToast === 'function') {
-            showToast(`⚠️ 傳輸可能失敗，請檢查連線`);
-        }
-    }
-
-    // 關閉視窗
-    closeDeliveryModal();
-    
-    // 解鎖按鈕 (雖然視窗關了，但習慣上還原狀態)
     if (btn) btn.disabled = false;
-}
-// script.js - 切換病歷面板顯示/隱藏
-function togglePatientPanel() {
-    const panel = document.getElementById('patient-info-panel');
-    const btn = document.getElementById('toggle-patient-btn');
-
-    if (panel) {
-        if (panel.classList.contains('hidden')) {
-            // 展開
-            panel.classList.remove('hidden');
-            if (btn) btn.classList.add('active'); // 按鈕亮起
-        } else {
-            // 收縮
-            panel.classList.add('hidden');
-            if (btn) btn.classList.remove('active'); // 按鈕變暗
-        }
-    }
 }
 // script.js - 初始化玩家紀錄 (雙重確認)
 function resetAllSystemData() {
