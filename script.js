@@ -3445,71 +3445,63 @@ const clinicChannel = new BroadcastChannel('alchemy_clinic_channel');
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-
-// script.js - 修正後的提交函式 (雙模版)
-
+// script.js - 修改：提交藥品至醫館
 function submitMedicinesToClinic() {
-    if (selectedDeliveryIds.length === 0) return;
+    if (selectedDeliveryIndices.length === 0) {
+        alert("請至少選擇一種藥品！");
+        return;
+    }
 
-    // 判斷模式文字
-    const modeText = transmissionMode === 'BROADCAST' ? '【近距離廣播】' : '【雲端傳送陣】';
-
-    // 再次確認
-    if (!confirm(`確定要透過 ${modeText} 提交這 ${selectedDeliveryIds.length} 顆丹藥嗎？`)) return;
-
-    // A. 準備資料
-    const medicinesToSend = inventoryStorage
-        .filter(item => selectedDeliveryIds.includes(item.uuid))
-        .map(item => {
-            const rawSymptoms = Array.isArray(item.symptomIds) ? item.symptomIds : [];
-            return {
-                id: item.id,
-                name: item.name,
-                element: item.element,
-                quality: item.quality,
-                toxin: item.toxin,
-                effectCodes: rawSymptoms.map(s => {
-                    const map = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E' };
-                    return map[s] || null;
-                }).filter(c => c !== null)
-            };
-        });
-
-    // B. 建立 Payload
-    const payloadObj = {
-        source: "AlchemySystem",
-        patientName: currentPatientData ? currentPatientData.name : "未知病患",
-        timestamp: new Date().toISOString(),
-        medicines: medicinesToSend
+    // 取得選中的藥品物件
+    const selectedMedicines = selectedDeliveryIndices.map(index => inventoryStorage[index]);
+    
+    // 準備傳送的資料包
+    const payload = {
+        type: 'MEDICINE_DELIVERY',
+        senderId: 'ALCHEMY_SYSTEM', // 或是你的 Client ID
+        targetPatientId: currentPatientData ? currentPatientData.id : null, // 確保有對應病患
+        medicines: selectedMedicines,
+        timestamp: Date.now()
     };
 
-    console.log(`[系統] 準備發送 (${transmissionMode}):`, payloadObj);
-
-    // ★★★ C. 核心分流邏輯 ★★★
-    if (transmissionMode === 'BROADCAST') {
-        // 模式 1: 廣播
-        broadcastChannel.postMessage(payloadObj);
-        alert("✨ [廣播] 丹藥已送達隔壁分頁！");
+    // 傳送邏輯
+    if (transmissionMode === 'MQTT' && mqttClient && mqttClient.connected) {
+        // MQTT 模式
+        mqttClient.publish('alchemy/clinic/delivery', JSON.stringify(payload));
+        log(`[MQTT] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
     } else {
-        // 模式 2: MQTT
-        if (mqttClient && mqttClient.connected) {
-            // ★ 修改這裡：發送到當前的 currentMqttTopic (含有房間號的)
-            mqttClient.publish(currentMqttTopic, JSON.stringify(payloadObj), { retain: false });
-            
-            // alert("✨ [雲端] 丹藥已飛向遠方伺服器！");
-            showToast("✨ [雲端] 丹藥已送達診間！"); // 建議改用 Toast
+        // 本地/廣播模式
+        if (broadcastChannel) {
+            broadcastChannel.postMessage(payload);
+            log(`[廣播] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
         } else {
-            alert("⚠️ 雲端連線尚未建立，無法傳送！請檢查網路或稍後再試。");
-            return; // 中斷，不刪除背包物品
+            console.warn("無可用的傳輸管道");
         }
     }
 
-    // D. 刪除本地庫存 & 更新 UI
-    inventoryStorage = inventoryStorage.filter(item => !selectedDeliveryIds.includes(item.uuid));
-    saveInventory();
-    renderInventory();
+    // --- 移除背包中的藥品 (因為已經送出了) ---
+    // 必須從後往前刪，避免 index 跑掉
+    selectedDeliveryIndices.sort((a, b) => b - a);
+    selectedDeliveryIndices.forEach(index => {
+        inventoryStorage.splice(index, 1);
+    });
+    saveInventoryToStorage(); // 存檔
+
+    // --- UI 反饋與關閉 ---
+    
+    // 1. 顯示簡單提示 (如果 showToast 有定義就用，沒有就略過)
+    if (typeof showToast === 'function') {
+        showToast("藥品已送達醫館！");
+    }
+
+    // 2. 彈出確認視窗 (使用者要求)
+    alert(`已成功將 ${selectedMedicines.length} 份藥品送往醫館！\n背包庫存已更新。`);
+
+    // 3. ★★★ 關鍵：關閉提交視窗 ★★★
     closeDeliveryModal();
-    if (currentPatientData) renderPatientInfo(currentPatientData);
+
+    // 4. (選用) 重新整理背包顯示，避免背景的背包還是舊的
+    renderInventoryList();
 }
 // script.js - 切換病歷面板顯示/隱藏
 function togglePatientPanel() {
@@ -3680,6 +3672,31 @@ function refreshDiscoveredCache() {
     });
 
     console.log(`[系統] 配方探索快取已更新，共發現 ${discoveredRecipeCache.size} 種配方`);
+}
+// script.js - 新增：顯示浮動提示 (Toast)
+function showToast(msg, duration = 2000) {
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    toast.style.position = 'fixed';
+    toast.style.bottom = '10%';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    toast.style.color = '#fff';
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '25px';
+    toast.style.zIndex = '9999';
+    toast.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+    toast.style.fontSize = '1rem';
+    toast.style.transition = 'opacity 0.3s';
+    
+    document.body.appendChild(toast);
+
+    // 淡出移除
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }
 // 修改：使用共用的清除邏輯
 function resetGame() {
