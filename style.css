@@ -1304,7 +1304,30 @@ input[type=range] {
     display: flex;
     justify-content: space-between;
 }
+/* style.css - 優化 Debug Log 顯示樣式 */
 
+#console-output {
+    overflow-y: auto; /* 確保內容過多時可以捲動 */
+    flex: 1;
+    padding: 5px;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 0.85rem;
+    word-break: break-all; /* 防止長字串(如JSON)撐壞版面 */
+}
+
+/* 日誌條目基礎樣式 */
+.log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid #333;
+    line-height: 1.4;
+}
+
+/* 不同類型的顏色區分 */
+.log-info { color: #cccccc; }       /* 一般訊息 (灰白) */
+.log-warn { color: #f39c12; }       /* 警告 (橘黃) */
+.log-error { color: #ff6b6b; }      /* 錯誤 (淡紅) */
+.log-success { color: #2ecc71; }    /* 成功 (綠色，給自訂log用) */
+.log-mqtt { color: #40E0D0; }       /* MQTT/系統 (青色) */
 #map-container {
     flex: 1;
     display: flex;
@@ -1429,7 +1452,7 @@ input[type=range] {
 /* --- 左上角選單容器 (取代舊的 history-btn-container) --- */
 #menu-container {
     position: absolute;
-    top: 20px;
+    top: 15px;
     left: 20px;
     z-index: 100;
     display: flex;
@@ -2214,3 +2237,30 @@ input[type=range] {
 .btn-regenerate:active {
     transform: scale(0.98);
 }
+/* style.css - 問診 ID 顯示樣式 */
+
+.room-id-tag {
+    position: absolute;
+    top: 20px;
+    left: 25px; /* 與按鈕對齊 */
+    z-index: 110; /* 比按鈕更高一點 */
+    
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #888;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 5px 12px;
+    border-radius: 15px;
+    border: 1px solid #444;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+    pointer-events: none; /* 讓滑鼠穿透，不擋操作 */
+}
+
+/* 當有 ID 時的特殊樣式 (可選，讓它亮一點) */
+.room-id-tag.active {
+    color: #40E0D0; /* 青色 */
+    border-color: #009688;
+    background-color: rgba(0, 150, 136, 0.15);
+}
+

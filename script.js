@@ -135,7 +135,24 @@ function getRoomIdFromUrl() {
     }
     return null; // 沒抓到或格式不對
 }
+// script.js - 新增：更新畫面上的房間 ID 顯示
 
+function updateRoomIdDisplay() {
+    const roomId = getRoomIdFromUrl(); // 呼叫現有的解析函式
+    const displayEl = document.getElementById('room-id-display');
+    
+    if (!displayEl) return;
+
+    if (roomId) {
+        // 有 ID：顯示號碼並亮燈
+        displayEl.textContent = `問診ID: ${roomId}`;
+        displayEl.classList.add('active');
+    } else {
+        // 無 ID：顯示預設文字
+        displayEl.textContent = "當前無特定問診ID";
+        displayEl.classList.remove('active');
+    }
+}
 // ==========================================
 // 3. 啟動 MQTT 連線
 // ==========================================
@@ -257,7 +274,11 @@ function setTransmissionMode(mode) {
 // script.js - 修改 window.onload
 
 window.onload = function () {
+    // ★★★ 新增這行：啟動攔截器 (要在 log 之前執行) ★★★
+    setupConsoleInterceptor();
     log("系統啟動中...");
+    // ★★★ 新增這行：更新左上角 ID 顯示 ★★★
+    updateRoomIdDisplay();
     if (typeof MaterialDB === 'undefined' || typeof RecipeDB === 'undefined' || typeof TextDB === 'undefined') {
         log("❌ 嚴重錯誤：找不到 data.js 或 TextDB，請檢查檔案引用！");
         return;
@@ -367,14 +388,75 @@ window.clearHistoryWithConfirm = function () {
     clearCurrentTabHistory();
 };
 
-function log(msg) {
+// script.js - 增強版 log 函式 (支援類型與樣式)
+
+function log(msg, type = 'info') {
     const consoleDiv = document.getElementById('console-output');
     if (!consoleDiv) return;
+
     const p = document.createElement('div');
     const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-    p.textContent = `[${time}] ${msg}`;
-    p.style.borderBottom = "1px solid #444";
+    
+    // 處理物件類型的訊息 (轉為字串以免顯示 [object Object])
+    let textContent = msg;
+    if (typeof msg === 'object') {
+        try {
+            textContent = JSON.stringify(msg);
+        } catch (e) {
+            textContent = String(msg);
+        }
+    }
+
+    p.textContent = `[${time}] ${textContent}`;
+    
+    // 設定樣式類別
+    p.className = `log-entry log-${type}`;
+
+    // 根據你的習慣，原本是 prepend (新訊息在最上面)
     consoleDiv.prepend(p);
+    
+    // 如果你希望訊息過多時自動刪除舊的 (避免記憶體爆掉)，可以加這段：
+    if (consoleDiv.children.length > 200) {
+        consoleDiv.removeChild(consoleDiv.lastChild);
+    }
+}
+// script.js - 新增：Console 攔截器 (將瀏覽器訊息導向 UI)
+
+function setupConsoleInterceptor() {
+    // 1. 保存原始的 console 方法，以免遞迴呼叫或失去功能
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+
+    // 2. 覆寫 console.log
+    console.log = function(...args) {
+        originalLog.apply(console, args); // 讓瀏覽器 F12 還是看得到
+        // 將參數陣列轉為單一字串
+        const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
+        
+        // 特殊判斷：如果是 MQTT 相關訊息，給予特殊顏色
+        if (msg.includes('[MQTT]') || msg.includes('[系統]')) {
+            log(msg, 'mqtt');
+        } else {
+            log(msg, 'info');
+        }
+    };
+
+    // 3. 覆寫 console.warn
+    console.warn = function(...args) {
+        originalWarn.apply(console, args);
+        const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
+        log(msg, 'warn');
+    };
+
+    // 4. 覆寫 console.error
+    console.error = function(...args) {
+        originalError.apply(console, args);
+        const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
+        log(msg, 'error');
+    };
+
+    log("✨ 系統訊息攔截器已啟動", "success");
 }
 
 function switchPanel(panelID) {
@@ -3017,9 +3099,7 @@ function loadPatientData(data) {
 // 邏輯變更：找到資料後，不再直接 loadPatientData，而是交給 handleIncomingPatientData 統一處理
 
 function checkPatientData() {
-    console.group("🔍 [系統診斷] 開始檢查靜態病患資料...");
-    console.log("1. 當前完整 URL:", window.location.href);
-    console.log("2. 當前 Hash 值:", window.location.hash);
+    console.group("🔍 [系統診斷] 開始檢查靜態病患資料...");    
 
     // ==========================================
     // 1. 優先檢查 Hash Payload (#payload=...)
