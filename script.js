@@ -1760,18 +1760,14 @@ async function runResultSequence() {
     // 6. 最後定格 (確保地圖狀態正確)
     drawRecipeMap();
 }
-
-// script.js - 修改 calculateFinalResult (純計算與存檔，不負責動畫與顯示)
-
+// script.js - 修正：確保結算時將 effectId 寫入資料
 async function calculateFinalResult() {
     console.log("[系統] 執行數值結算...");
 
-    // 1. 確保預覽箭頭消失 (currentStep=5 時 calculateCurrentPreviewData 回傳 null)
-    // 但此時尚未顯示結果面板
-    // ✅ 修改後：使用防撞號生成器
     const resultID = generateUniqueBatchID();
 
     if (potMaterials.length < 2) { log("錯誤：材料不足"); return null; }
+    
     // 備份資料
     if (lastResultData) {
         previousResultData = lastResultData;
@@ -1929,7 +1925,7 @@ async function calculateFinalResult() {
     let displayDeviation = isSlag ? "---" : bestDist.toFixed(2);
     let displayMatch = isSlag ? "---" : matchRatePct;
 
-    // ★ 更新全域座標 (這一步很重要，讓動畫知道終點在哪)
+    // 更新全域座標
     lastPlayerResult = {
         x: playerRes.x, y: playerRes.y, name: finalName,
         tx: isSlag ? null : bestRecipe.targetX, ty: isSlag ? null : bestRecipe.targetY
@@ -1951,8 +1947,11 @@ async function calculateFinalResult() {
         grind: (grindCoefficient * 100).toFixed(0) + "%",
         advice: advice,
 
-        symptoms: symptomText,        // 這是給人類看的中文 (例如 "安神")
-        symptomIds: (!isSlag && bestRecipe) ? bestRecipe.symptoms : [], // ★ 新增這行：保留原始 ID 陣列 (例如 [1, 5])
+        symptoms: symptomText,
+        symptomIds: (!isSlag && bestRecipe) ? bestRecipe.symptoms : [],
+        
+        // ★★★ 關鍵修正：確實存入 effectId ★★★
+        effectId: (!isSlag && bestRecipe) ? bestRecipe.effectId : null,
 
         reaction: reactionText,
         toxin: displayToxin,
@@ -1961,9 +1960,7 @@ async function calculateFinalResult() {
 
     lastResultData = resultData;
 
-    lastResultData = resultData;
-
-    // 更新隱藏的 DOM (準備顯示)
+    // 更新 UI
     updateResultUI(resultData);
 
     // 存檔
@@ -1975,7 +1972,6 @@ async function calculateFinalResult() {
         log(`[背包] 渣滓不予收藏`);
     }
 
-    // ★ 回傳資料給動畫流程使用
     return resultData;
 }
 
@@ -2897,63 +2893,34 @@ function checkPatientData() {
  * @param {Object} newData - 新收到的 JSON 資料
  * @param {String} sourceName - 來源名稱 ('MQTT', 'URL', 'Manual')
  */
-// [修正後] script.js - 智慧型資料處理中心 (支援差異比對)
-
+// script.js - 修正：接收病患資料 (移除 confirm，避免報錯)
 function handleIncomingPatientData(newData, sourceName) {
-    console.log(`[系統] 收到來自【${sourceName}】的資料，進行比對...`);
+    if (!newData || (!newData.element && !newData.diagnosis)) return;
 
-    // 1. 防呆：如果資料無效，直接忽略
-    if (!newData || (!newData.element && !newData.diagnosis)) {
-        console.warn("[系統] 資料格式錯誤，忽略此請求。");
-        return;
-    }
-
-    // 2. 判斷當前是否已經有病患資料
-    const hasExistingData = currentPatientData !== null;
-
-    // --- 情況 A：目前完全沒資料 -> 直接載入 ---
-    if (!hasExistingData) {
-        console.log("[系統] 目前無病患，直接載入。");
-        loadPatientData(newData);
-        if (sourceName === 'MQTT') log(`✨ 已自動同步雲端病患資料`);
-        return;
-    }
-
-    // --- 情況 B：有資料，進行深度比對 ---
-    // 呼叫剛剛寫好的比對函式
-    const diffs = getPatientDataDiffs(currentPatientData, newData);
-
-    // 如果差異列表是空的，代表資料完全一致
-    if (diffs.length === 0) {
-        console.log(`[系統] 資料完全一致，忽略此次更新。`);
-        return; 
-    }
-
-    // --- 情況 C：資料有變動，需要決定如何處理 ---
-    
-    // ★ 啟動階段 (3秒內) 強制覆蓋 (避免 URL 舊資料卡住 MQTT 新資料)
-    const systemUpTime = performance.now();
-    const isStartupPhase = systemUpTime < 3000; 
-
-    if (sourceName === 'MQTT' && isStartupPhase) {
-        console.log("[系統] 啟動階段收到 MQTT 資料，自動覆蓋。");
-        loadPatientData(newData);
-        log(`✨ 已將病患資料更新為雲端最新版本`);
+    // 比對差異
+    let hasChanges = false;
+    if (currentPatientData) {
+        const diffs = getPatientDataDiffs(currentPatientData, newData);
+        if (diffs.length > 0) hasChanges = true;
     } else {
-        // --- 情況 D：遊戲中途收到變動資料 -> 跳窗列出差異 ---
-        
-        // 組合提示訊息
-        let diffMsg = diffs.join('\n');
-        const confirmMsg = `⚠️ 收到病患資料變更！\n(來源：${sourceName})\n\n發現以下差異：\n${diffMsg}\n\n請問要「更新」目前的資料嗎？`;
-        
-        if (confirm(confirmMsg)) {
-            console.log("[系統] 玩家確認更新資料。");
-            loadPatientData(newData);
-            // 可以加個 Toast 提示更新成功
-        } else {
-            console.log("[系統] 玩家拒絕更新。");
-        }
+        hasChanges = true; // 從無到有
     }
+
+    if (!hasChanges) return; // 沒變就不處理
+
+    // --- 修正策略：直接更新，並用 Toast 通知 ---
+    // 不使用 confirm/alert，避免在背景或操作其他 UI 時報錯
+    
+    console.log(`[系統] 收到來自【${sourceName}】的新資料，自動更新。`);
+    loadPatientData(newData);
+
+    // 如果有 Toast 函式，顯示溫和的提示
+    if (typeof showToast === 'function') {
+        showToast(`📋 病患資料已更新 (${sourceName})`);
+    }
+
+    // 可以在 Log 區顯示細節
+    log(`[系統] 病患資料已同步更新`, "info");
 }
 // script.js - 新增：比對病患資料差異的輔助函式
 
@@ -3324,21 +3291,23 @@ function clearPatientData() {
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-// script.js - 修正：開啟交付視窗並生成列表 (修復品質 undefined 問題)
+// script.js - 修正：開啟交付視窗 (改為顯示「療效/症狀」而非「反應」)
 function openDeliveryModal() {
     const modal = document.getElementById('delivery-modal');
     if (!modal) return;
 
-    // 1. 重置選取狀態
+    // 1. 初始化選取狀態
     selectedDeliveryIndices = [];
     const countEl = document.getElementById('delivery-count');
-    if (countEl) countEl.textContent = "已選：0 / 3";
-    
-    // 重置按鈕
+    if (countEl) {
+        countEl.textContent = "已選：0 / 3";
+        countEl.style.color = "#aaa";
+    }
+
     const btn = document.getElementById('confirm-delivery-btn');
     if (btn) btn.classList.add('disabled');
 
-    // 2. 設定病患名稱
+    // 2. 更新標題
     const nameEl = document.getElementById('delivery-patient-name');
     if (nameEl) {
         nameEl.textContent = (currentPatientData && currentPatientData.name) ? currentPatientData.name : "未知病患";
@@ -3348,10 +3317,53 @@ function openDeliveryModal() {
     const container = document.getElementById('delivery-list-container');
     container.innerHTML = "";
 
-    if (inventoryStorage.length === 0) {
+    if (!inventoryStorage || inventoryStorage.length === 0) {
         container.innerHTML = `<p style="padding:20px; text-align:center; color:#666;">背包是空的，請先煉製丹藥。</p>`;
     } else {
         inventoryStorage.forEach((item, index) => {
+            const quality = item.quality || item.grade || 'D';
+            
+            // --- ★★★ 修正重點：改為優先顯示「療效」(Symptoms) ★★★ ---
+            let effectDisplay = "---";
+
+            // 1. 優先讀取已經存好的中文療效 (例如 "安神/安眠")
+            if (item.symptoms && item.symptoms !== "無") {
+                effectDisplay = item.symptoms;
+            }
+            // 2. 如果沒有文字，嘗試從 symptomIds (代碼陣列) 轉譯 (舊資料補救)
+            else if (item.symptomIds && Array.isArray(item.symptomIds) && item.symptomIds.length > 0) {
+                effectDisplay = item.symptomIds.map(sid => {
+                    const sData = (typeof SymptomsDB !== 'undefined') ? SymptomsDB[sid] : null;
+                    return (sData && typeof TextDB !== 'undefined') ? TextDB[sData.descId] : "?";
+                }).join("、");
+            }
+            // 3. 如果連 IDs 都沒有，嘗試從藥名反查配方表
+            else if (item.name && typeof RecipeDB !== 'undefined') {
+                const matched = RecipeDB.find(r => TextDB[r.nameId] === item.name);
+                if (matched && matched.symptoms) {
+                    effectDisplay = matched.symptoms.map(sid => {
+                        const sData = (typeof SymptomsDB !== 'undefined') ? SymptomsDB[sid] : null;
+                        return (sData && typeof TextDB !== 'undefined') ? TextDB[sData.descId] : "?";
+                    }).join("、");
+                }
+            }
+
+            // 如果最後還是沒東西 (例如渣滓)，顯示 "無"
+            if (effectDisplay === "---" || !effectDisplay) {
+                effectDisplay = "無";
+            }
+
+            // 顏色設定
+            let qColor = "#777";
+            if (quality === 'U') qColor = "#d4af37";
+            else if (quality === 'S') qColor = "#FFD700";
+            else if (quality === 'A') qColor = "#e67e22";
+            else if (quality === 'B') qColor = "#3498db";
+            
+            // 毒素警告
+            const toxinVal = item.toxin || 0;
+            const toxinClass = toxinVal > 30 ? "warn" : "";
+
             const row = document.createElement('div');
             row.style.display = "grid";
             row.style.gridTemplateColumns = "50px 2fr 1fr 1fr 2fr 1fr";
@@ -3359,35 +3371,25 @@ function openDeliveryModal() {
             row.style.borderBottom = "1px solid #333";
             row.style.alignItems = "center";
             row.style.fontSize = "0.9rem";
-
-            // ★★★ 修正點 1：這裡原本寫 item.grade，改回 item.quality ★★★
-            let qualityColor = "#fff";
-            if (item.quality === 'U') qualityColor = "#d4af37"; // 補上 U 級顏色
-            else if (item.quality === 'S') qualityColor = "#FFD700";
-            else if (item.quality === 'A') qualityColor = "#d4af37";
-            else if (item.quality === 'B') qualityColor = "#3498db";
-            else if (item.quality === 'D') qualityColor = "#777";
             
-            // 毒素警告
-            const toxinClass = item.toxin > 30 ? "warn" : "";
-
             row.innerHTML = `
                 <div style="text-align:center;">
                     <input type="checkbox" onchange="toggleDeliverySelection(${index}, this)">
                 </div>
-                <div style="font-weight:bold; color:${qualityColor};">${item.name}</div>
+                <div style="font-weight:bold; color:${qColor};">${item.name || '未知丹藥'}</div>
+                <div style="color:${qColor}; font-weight:bold;">${quality}</div>
+                <div style="color:${(typeof ElementColors !== 'undefined' ? ElementColors[item.element] : '#ccc')}">${item.element || '無'}</div>
                 
-                <div style="color:${qualityColor}; font-weight:bold;">${item.quality}</div>
+                <div style="font-family:monospace; color:#aaa; font-size:0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${effectDisplay}">
+                    ${effectDisplay}
+                </div>
                 
-                <div style="color:${ElementColors[item.element] || '#ccc'}">${item.element}</div>
-                <div style="font-family:monospace; color:#888;">${item.effectId || '---'}</div>
-                <div class="${toxinClass}">${item.toxin}%</div>
+                <div class="${toxinClass}">${toxinVal}%</div>
             `;
             container.appendChild(row);
         });
     }
 
-    // 4. 顯示視窗
     modal.classList.remove('hidden');
 }
 
@@ -3497,58 +3499,74 @@ const clinicChannel = new BroadcastChannel('alchemy_clinic_channel');
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-/// script.js - 修正：提交藥品至醫館 (修復 saveInventoryToStorage is not defined)
+// script.js - 修正：提交藥品 (移除 blocking alert，確保傳輸)
 function submitMedicinesToClinic() {
-    if (selectedDeliveryIndices.length === 0) {
-        alert("請至少選擇一種藥品！");
+    // 防呆檢查
+    if (typeof selectedDeliveryIndices === 'undefined' || selectedDeliveryIndices.length === 0) {
+        if(typeof showToast === 'function') showToast("請至少選擇一種藥品！");
         return;
     }
 
-    // 取得選中的藥品物件
+    // 1. 鎖定按鈕避免重複提交
+    const btn = document.getElementById('confirm-delivery-btn');
+    if (btn) btn.disabled = true;
+
+    // 2. 取得選中的藥品物件
     const selectedMedicines = selectedDeliveryIndices.map(index => inventoryStorage[index]);
     
-    // 準備傳送的資料包
+    // 3. 建構 Payload
     const payload = {
         type: 'MEDICINE_DELIVERY',
         senderId: 'ALCHEMY_SYSTEM',
         targetPatientId: currentPatientData ? currentPatientData.id : null,
-        medicines: selectedMedicines,
+        medicines: selectedMedicines, // 傳送完整的藥品物件
         timestamp: Date.now()
     };
 
-    // 傳送邏輯
+    console.log("[傳輸] 準備發送藥品:", payload);
+
+    // 4. 執行傳輸 (MQTT / Broadcast)
+    let isSent = false;
     if (transmissionMode === 'MQTT' && mqttClient && mqttClient.connected) {
         mqttClient.publish('alchemy/clinic/delivery', JSON.stringify(payload));
         log(`[MQTT] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
+        isSent = true;
     } else {
-        if (broadcastChannel) {
+        if (typeof broadcastChannel !== 'undefined' && broadcastChannel) {
             broadcastChannel.postMessage(payload);
             log(`[廣播] 已傳送 ${selectedMedicines.length} 份藥品至醫館`, "success");
+            isSent = true;
         } else {
-            console.warn("無可用的傳輸管道");
+            console.error("[傳輸失敗] 無可用的傳輸管道");
         }
     }
 
-    // --- 移除背包中的藥品 ---
-    // 必須從後往前刪，避免 index 跑掉
+    // 5. 扣除庫存 (從後往前刪)
     selectedDeliveryIndices.sort((a, b) => b - a);
     selectedDeliveryIndices.forEach(index => {
         inventoryStorage.splice(index, 1);
     });
+    
+    // 6. 存檔與更新 UI
+    saveInventory(); // 確認函式名稱正確
+    if (typeof renderInventory === 'function') renderInventory(); 
 
-    // ★★★ 修正點：改為呼叫正確的 saveInventory() ★★★
-    // 你的腳本裡定義的是 saveInventory，不是 saveInventoryToStorage
-    saveInventory(); 
-
-    // --- UI 反饋與關閉 ---
-    if (typeof showToast === 'function') {
-        showToast("藥品已送達醫館！");
+    // 7. 使用 Toast 提示並關閉視窗 (取代 alert)
+    if(isSent) {
+        if(typeof showToast === 'function') {
+            showToast(`✅ 已成功送出 ${selectedMedicines.length} 份藥品！`);
+        }
+    } else {
+        if(typeof showToast === 'function') {
+            showToast(`⚠️ 傳輸可能失敗，請檢查連線`);
+        }
     }
 
-    alert(`已成功將 ${selectedMedicines.length} 份藥品送往醫館！\n背包庫存已更新。`);
-
+    // 關閉視窗
     closeDeliveryModal();
-    renderInventory(); // 更新背包介面
+    
+    // 解鎖按鈕 (雖然視窗關了，但習慣上還原狀態)
+    if (btn) btn.disabled = false;
 }
 // script.js - 切換病歷面板顯示/隱藏
 function togglePatientPanel() {
