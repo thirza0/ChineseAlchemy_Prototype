@@ -113,7 +113,7 @@ const CLINIC_URL = "https://lindaagilebyte.github.io/Prototype_03/"; // 範例
 let transmissionMode = 'MQTT'; // 預設模式: 'BROADCAST' or 'MQTT'
 const broadcastChannel = new BroadcastChannel('alchemy_clinic_channel');
 // script.js - 修改 MQTT 初始化區塊
-
+let selectedDeliveryIndices = []; // 儲存使用者勾選的藥品索引
 // ==========================================
 // 1. 設定基礎常數
 // ==========================================
@@ -3325,24 +3325,73 @@ function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
 
-// 1. 開啟選藥視窗
+// script.js - 修正：開啟交付視窗並生成列表
 function openDeliveryModal() {
-    if (!currentPatientData) return;
-
     const modal = document.getElementById('delivery-modal');
-    modal.classList.remove('hidden');
-    document.getElementById('delivery-patient-name').textContent = currentPatientData.name || "未知病患";
+    if (!modal) return;
 
-    // 重置選擇
-    selectedDeliveryIds = [];
-    renderDeliveryList();
-    updateDeliveryUI();
+    // 1. 重置選取狀態
+    selectedDeliveryIndices = [];
+    const countEl = document.getElementById('delivery-count');
+    if (countEl) countEl.textContent = "已選：0 / 3";
+    
+    // 重置按鈕
+    const btn = document.getElementById('confirm-delivery-btn');
+    if (btn) btn.classList.add('disabled');
+
+    // 2. 設定病患名稱
+    const nameEl = document.getElementById('delivery-patient-name');
+    if (nameEl) {
+        nameEl.textContent = (currentPatientData && currentPatientData.name) ? currentPatientData.name : "未知病患";
+    }
+
+    // 3. 生成藥品列表
+    const container = document.getElementById('delivery-list-container');
+    container.innerHTML = "";
+
+    if (inventoryStorage.length === 0) {
+        container.innerHTML = `<p style="padding:20px; text-align:center; color:#666;">背包是空的，請先煉製丹藥。</p>`;
+    } else {
+        inventoryStorage.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.style.display = "grid";
+            row.style.gridTemplateColumns = "50px 2fr 1fr 1fr 2fr 1fr";
+            row.style.padding = "10px 15px";
+            row.style.borderBottom = "1px solid #333";
+            row.style.alignItems = "center";
+            row.style.fontSize = "0.9rem";
+
+            // 判斷品質顏色
+            let qualityColor = "#fff";
+            if (item.grade === 'S') qualityColor = "#FFD700";
+            else if (item.grade === 'A') qualityColor = "#d4af37";
+            else if (item.grade === 'B') qualityColor = "#3498db";
+            
+            // 毒素警告
+            const toxinClass = item.toxin > 30 ? "warn" : "";
+
+            row.innerHTML = `
+                <div style="text-align:center;">
+                    <input type="checkbox" onchange="toggleDeliverySelection(${index}, this)">
+                </div>
+                <div style="font-weight:bold; color:${qualityColor};">${item.name}</div>
+                <div>${item.grade}</div>
+                <div style="color:${ElementColors[item.element] || '#ccc'}">${item.element}</div>
+                <div style="font-family:monospace; color:#888;">${item.effectId || '---'}</div>
+                <div class="${toxinClass}">${item.toxin}%</div>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    // 4. 顯示視窗
+    modal.classList.remove('hidden');
 }
 
-// 2. 關閉視窗
+// 記得也要補上關閉函式
 function closeDeliveryModal() {
-    document.getElementById('delivery-modal').classList.add('hidden');
-    selectedDeliveryIds = [];
+    const modal = document.getElementById('delivery-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 // 3. 渲染背包列表 (★ 改用 uuid 解決勾選顯示問題)
@@ -3552,6 +3601,42 @@ function resetAllSystemData() {
 
     // 4. 強制重整頁面以套用變更
     window.location.reload();
+}
+// script.js - 新增：處理藥品勾選事件
+function toggleDeliverySelection(index, checkbox) {
+    if (checkbox.checked) {
+        // 限制最多選 3 個
+        if (selectedDeliveryIndices.length >= 3) {
+            checkbox.checked = false;
+            alert("一次最多只能提交 3 份藥品！");
+            return;
+        }
+        selectedDeliveryIndices.push(index);
+    } else {
+        // 取消勾選
+        const idx = selectedDeliveryIndices.indexOf(index);
+        if (idx > -1) {
+            selectedDeliveryIndices.splice(idx, 1);
+        }
+    }
+
+    // 更新 UI 顯示 (例如顯示已選數量)
+    const countEl = document.getElementById('delivery-count');
+    if (countEl) {
+        countEl.textContent = `已選：${selectedDeliveryIndices.length} / 3`;
+        if (selectedDeliveryIndices.length === 3) countEl.style.color = "#FF5252"; // 滿了變紅
+        else countEl.style.color = "#aaa";
+    }
+
+    // 更新按鈕狀態 (有選才能按)
+    const btn = document.getElementById('confirm-delivery-btn');
+    if (btn) {
+        if (selectedDeliveryIndices.length > 0) {
+            btn.classList.remove('disabled');
+        } else {
+            btn.classList.add('disabled');
+        }
+    }
 }
 // script.js - 新增函式
 
