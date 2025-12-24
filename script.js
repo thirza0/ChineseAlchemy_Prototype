@@ -3367,7 +3367,7 @@ function openDeliveryModal() {
                     ${effectDisplay}
                 </div>
                 
-                <div class="${toxinClass}">${toxinVal}%</div>
+                <div class="${toxinClass}">${toxinVal}</div>
             `;
             container.appendChild(row);
         });
@@ -3693,7 +3693,7 @@ function regenerateItemFromHistory(index, event) {
     alert(`✨ 已成功再製【${newItem.name}】(ID: ${newItem.id})！`);
 
     // (選用) 如果想要再製後直接打開背包給玩家看，可以解開下面這行
-    toggleInventoryModal();
+    //toggleInventoryModal();
 }
 // script.js - 新增：唯一 ID 生成器 (防撞號)
 
