@@ -3482,7 +3482,7 @@ const clinicChannel = new BroadcastChannel('alchemy_clinic_channel');
 function saveInventory() {
     localStorage.setItem('alchemy_inventory', JSON.stringify(inventoryStorage));
 }
-// script.js - 修正：提交藥品 (二次確認 + 修正傳輸邏輯)
+// script.js - 修正：提交藥品 (修復 effectCodes 為空的問題)
 function submitMedicinesToClinic() {
     // 1. 檢查是否選取藥品
     if (typeof selectedDeliveryIndices === 'undefined' || selectedDeliveryIndices.length === 0) {
@@ -3490,65 +3490,59 @@ function submitMedicinesToClinic() {
         return;
     }
 
-    // 2. 準備 Room ID (從網址抓，預設 1223)
+    // 2. 準備 Room ID
     const urlParams = new URLSearchParams(window.location.search);
     const currentRoomId = urlParams.get('room_id') || urlParams.get('room') || "1223";
 
-    // 3. 準備病患資訊 (優先抓名字)
+    // 3. 準備病患資訊
     let targetId = null; 
     let targetName = "Unknown";
-    
     if (currentPatientData) {
         targetName = currentPatientData.name || "Unknown";
-        // 如果是 TEMP_ 開頭的假 ID，我們依然傳送它，或者是傳 null 也可以
-        // 為了讓醫館好做事，我們這裡傳送 ID (即使是假的)
         targetId = currentPatientData.id;
     }
 
-    // ★★★ 新增：二次確認視窗 ★★★
+    // 二次確認
     const confirmMsg = `即將提交 ${selectedDeliveryIndices.length} 份藥品\n給病患：【${targetName}】\n(房號: ${currentRoomId})\n\n確定要送出嗎？`;
-    if (!confirm(confirmMsg)) {
-        return; // 玩家取消，停止執行
-    }
+    if (!confirm(confirmMsg)) return;
 
-    // 鎖定按鈕，避免連點
     const btn = document.getElementById('confirm-delivery-btn');
     if (btn) btn.disabled = true;
 
-    // 4. 準備 Payload (資料包)
+    // 4. 準備 Payload (★ 重點修正區 ★)
     const selectedMedicines = selectedDeliveryIndices.map(index => {
         const item = inventoryStorage[index];
         let finalCodes = [];
 
-        // 步驟 A: 嘗試取得數字 ID 列表
-        // 有些藥品存在 symptomIds (煉丹結果)，有些存在 symptoms (配方預設)，且可能是 [1, 5] 或 "1,5"
+        // 定義 ID 對應代碼表 (因為 data.js 缺少 code 欄位，我們這裡手動補上)
+        const ID_TO_CODE_MAP = {
+            1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E',
+            "1": 'A', "2": 'B', "3": 'C', "4": 'D', "5": 'E'
+        };
+
+        // 步驟 A: 收集原始 ID (可能是 [2,4] 或 "A,B")
         let rawIds = [];
-        
         if (item.symptomIds && Array.isArray(item.symptomIds) && item.symptomIds.length > 0) {
             rawIds = item.symptomIds;
         } else if (item.symptoms) {
             if (Array.isArray(item.symptoms)) {
-                // 如果是 [1, 5] 或 ["A", "B"]
                 rawIds = item.symptoms;
             } else if (typeof item.symptoms === 'string') {
-                // 如果是 "1, 5" 或 "A, B"
                 rawIds = item.symptoms.split(',').map(s => s.trim());
             }
         }
 
-        // 步驟 B: 將 ID 或 代碼 統一轉換為 ["A", "B"...]
+        // 步驟 B: 強制轉換
         if (rawIds.length > 0) {
             finalCodes = rawIds.map(val => {
-                // 情況 1: 它是數字 ID (例如 1, 5, "1") -> 查 SymptomsDB
-                if ((typeof val === 'number' || !isNaN(val)) && typeof SymptomsDB !== 'undefined' && SymptomsDB[val]) {
-                    return SymptomsDB[val].code;
-                }
-                // 情況 2: 它已經是代碼 (例如 "A", "B") -> 直接回傳 (做個簡單的正則驗證)
-                if (typeof val === 'string' && /^[A-E]$/.test(val)) {
-                    return val;
-                }
+                // 優先查我們的手動對照表 (解決 symptomIds=[2,4] 變成 undefined 的問題)
+                if (ID_TO_CODE_MAP[val]) return ID_TO_CODE_MAP[val];
+
+                // 其次，如果本身已經是 A-E 字串，直接回傳
+                if (typeof val === 'string' && /^[A-E]$/.test(val)) return val;
+
                 return null;
-            }).filter(code => code); // 過濾掉 null
+            }).filter(c => c); // 過濾掉 null
         }
 
         return {
@@ -3557,65 +3551,51 @@ function submitMedicinesToClinic() {
             element: item.element,
             quality: item.quality,
             toxin: parseFloat(item.toxin) || 0,
-            effectCodes: finalCodes // ★ 現在這裡應該能正確抓到 ["A", "E"] 了
+            effectCodes: finalCodes // 現在這裡應該是 ["B", "D"] 了
         };
     });
-    
-    // Payload 本身不用變，因為 medicines 現在指向了處理過的 selectedMedicines
+
     const payload = {
         type: 'MEDICINE_DELIVERY', 
         roomId: currentRoomId,
         senderId: 'ALCHEMY_SYSTEM',
         targetPatientId: targetId,
         patientName: targetName,
-        medicines: selectedMedicines, // 這裡傳入上面洗好的資料
+        medicines: selectedMedicines,
         timestamp: Date.now()
     };
 
-    const payloadString = JSON.stringify(payload);
-    console.log("🚀 [傳輸] 正在發送至 thirza/alchemy/v1:", payload);
+    console.log("🚀 [傳輸] 發送 Payload:", payload);
 
     // 5. 執行傳輸
     let isSent = false;
-    
     if (transmissionMode === 'MQTT' && mqttClient && mqttClient.connected) {
-        // 發送給醫館的主頻道
+        const payloadString = JSON.stringify(payload);
         mqttClient.publish('thirza/alchemy/v1', payloadString);
-        // 發送給房間專屬頻道 (雙重保險)
         mqttClient.publish(`thirza/alchemy/v1/${currentRoomId}`, payloadString);
-        
         console.log(`📡 [MQTT] 已發送`);
         isSent = true;
-        
-        // 顯示成功通知
         if(typeof showToast === 'function') showToast(`✅ 已發送給 ${targetName}`);
-
     } else {
-        // 本地廣播 (備用)
+        // 本地廣播備案
         if (typeof broadcastChannel !== 'undefined' && broadcastChannel) {
             broadcastChannel.postMessage(payload);
             isSent = true;
-            if(typeof showToast === 'function') showToast(`✅ (廣播) 已發送給 ${targetName}`);
+            if(typeof showToast === 'function') showToast(`✅ (廣播) 已發送`);
         } else {
-            console.error("❌ MQTT 未連線");
             alert("網路未連線！無法傳送。");
         }
     }
 
-    // 6. 後續處理 (成功才扣庫存)
+    // 6. 扣除庫存
     if (isSent) {
         selectedDeliveryIndices.sort((a, b) => b - a);
-        selectedDeliveryIndices.forEach(index => {
-            inventoryStorage.splice(index, 1);
-        });
-        
+        selectedDeliveryIndices.forEach(idx => inventoryStorage.splice(idx, 1));
         saveInventory(); 
         if (typeof renderInventory === 'function') renderInventory(); 
-        
         closeDeliveryModal();
     } 
 
-    // 解鎖按鈕
     if (btn) btn.disabled = false;
 }
 // script.js - 初始化玩家紀錄 (雙重確認)
