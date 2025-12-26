@@ -3516,41 +3516,48 @@ function submitMedicinesToClinic() {
     if (btn) btn.disabled = true;
 
     // 4. 準備 Payload (資料包)
-    // ★★★ 修改處：這裡不能直接 map inventoryStorage，必須做資料清洗與轉換 ★★★
     const selectedMedicines = selectedDeliveryIndices.map(index => {
         const item = inventoryStorage[index];
         let finalCodes = [];
 
-        // (A) 嘗試將數字 ID (symptomIds) 轉回代碼 (A, B...)
-        // 這是最準確的方法，因為煉丹時產生的是 ID
-        if (item.symptomIds && Array.isArray(item.symptomIds)) {
-            finalCodes = item.symptomIds.map(id => {
-                // 確保 SymptomsDB 存在且查得到
-                return (typeof SymptomsDB !== 'undefined' && SymptomsDB[id]) ? SymptomsDB[id].code : null;
-            }).filter(code => code); // 過濾掉 null
-        }
-
-        // (B) 如果沒有 ID，才嘗試去解析 symptoms 欄位 (防止傳出中文)
-        if (finalCodes.length === 0 && item.symptoms) {
+        // 步驟 A: 嘗試取得數字 ID 列表
+        // 有些藥品存在 symptomIds (煉丹結果)，有些存在 symptoms (配方預設)，且可能是 [1, 5] 或 "1,5"
+        let rawIds = [];
+        
+        if (item.symptomIds && Array.isArray(item.symptomIds) && item.symptomIds.length > 0) {
+            rawIds = item.symptomIds;
+        } else if (item.symptoms) {
             if (Array.isArray(item.symptoms)) {
-                // 過濾掉中文，只留 A-E
-                finalCodes = item.symptoms.filter(s => /^[A-E]$/.test(s));
+                // 如果是 [1, 5] 或 ["A", "B"]
+                rawIds = item.symptoms;
             } else if (typeof item.symptoms === 'string') {
-                // 處理字串格式
-                finalCodes = item.symptoms.split(',')
-                    .map(s => s.trim())
-                    .filter(s => /^[A-E]$/.test(s));
+                // 如果是 "1, 5" 或 "A, B"
+                rawIds = item.symptoms.split(',').map(s => s.trim());
             }
         }
 
-        // 回傳給對方的乾淨格式
+        // 步驟 B: 將 ID 或 代碼 統一轉換為 ["A", "B"...]
+        if (rawIds.length > 0) {
+            finalCodes = rawIds.map(val => {
+                // 情況 1: 它是數字 ID (例如 1, 5, "1") -> 查 SymptomsDB
+                if ((typeof val === 'number' || !isNaN(val)) && typeof SymptomsDB !== 'undefined' && SymptomsDB[val]) {
+                    return SymptomsDB[val].code;
+                }
+                // 情況 2: 它已經是代碼 (例如 "A", "B") -> 直接回傳 (做個簡單的正則驗證)
+                if (typeof val === 'string' && /^[A-E]$/.test(val)) {
+                    return val;
+                }
+                return null;
+            }).filter(code => code); // 過濾掉 null
+        }
+
         return {
             id: item.uuid,
             name: item.name,
             element: item.element,
             quality: item.quality,
             toxin: parseFloat(item.toxin) || 0,
-            effectCodes: finalCodes || [] // ★ 這就是對方要的關鍵欄位
+            effectCodes: finalCodes // ★ 現在這裡應該能正確抓到 ["A", "E"] 了
         };
     });
     
