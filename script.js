@@ -3516,15 +3516,52 @@ function submitMedicinesToClinic() {
     if (btn) btn.disabled = true;
 
     // 4. 準備 Payload (資料包)
-    const selectedMedicines = selectedDeliveryIndices.map(index => inventoryStorage[index]);
+    // ★★★ 修改處：這裡不能直接 map inventoryStorage，必須做資料清洗與轉換 ★★★
+    const selectedMedicines = selectedDeliveryIndices.map(index => {
+        const item = inventoryStorage[index];
+        let finalCodes = [];
+
+        // (A) 嘗試將數字 ID (symptomIds) 轉回代碼 (A, B...)
+        // 這是最準確的方法，因為煉丹時產生的是 ID
+        if (item.symptomIds && Array.isArray(item.symptomIds)) {
+            finalCodes = item.symptomIds.map(id => {
+                // 確保 SymptomsDB 存在且查得到
+                return (typeof SymptomsDB !== 'undefined' && SymptomsDB[id]) ? SymptomsDB[id].code : null;
+            }).filter(code => code); // 過濾掉 null
+        }
+
+        // (B) 如果沒有 ID，才嘗試去解析 symptoms 欄位 (防止傳出中文)
+        if (finalCodes.length === 0 && item.symptoms) {
+            if (Array.isArray(item.symptoms)) {
+                // 過濾掉中文，只留 A-E
+                finalCodes = item.symptoms.filter(s => /^[A-E]$/.test(s));
+            } else if (typeof item.symptoms === 'string') {
+                // 處理字串格式
+                finalCodes = item.symptoms.split(',')
+                    .map(s => s.trim())
+                    .filter(s => /^[A-E]$/.test(s));
+            }
+        }
+
+        // 回傳給對方的乾淨格式
+        return {
+            id: item.uuid,
+            name: item.name,
+            element: item.element,
+            quality: item.quality,
+            toxin: parseFloat(item.toxin) || 0,
+            effectCodes: finalCodes || [] // ★ 這就是對方要的關鍵欄位
+        };
+    });
     
+    // Payload 本身不用變，因為 medicines 現在指向了處理過的 selectedMedicines
     const payload = {
         type: 'MEDICINE_DELIVERY', 
         roomId: currentRoomId,
         senderId: 'ALCHEMY_SYSTEM',
         targetPatientId: targetId,
-        patientName: targetName, // 多傳一個名字欄位備用
-        medicines: selectedMedicines,
+        patientName: targetName,
+        medicines: selectedMedicines, // 這裡傳入上面洗好的資料
         timestamp: Date.now()
     };
 
