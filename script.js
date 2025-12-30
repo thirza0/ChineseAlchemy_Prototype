@@ -139,7 +139,7 @@ function getRoomIdFromUrl() {
 function updateRoomIdDisplay() {
     const roomId = getRoomIdFromUrl(); // 呼叫現有的解析函式
     const displayEl = document.getElementById('room-id-display');
-    
+
     if (!displayEl) return;
 
     if (roomId) {
@@ -152,31 +152,23 @@ function updateRoomIdDisplay() {
         displayEl.classList.remove('active');
     }
 }
-// ==========================================
-// 3. 啟動 MQTT 連線
-// ==========================================
+// [修改] script.js - initMqttConnection
 function initMqttConnection() {
     // A. 決定 Topic
     const roomId = getRoomIdFromUrl();
-    
+
     if (roomId) {
-        // 如果有房間號，頻道變成專屬頻道
         currentMqttTopic = `${MQTT_BASE_TOPIC}/${roomId}`;
         console.log(`🔒 [系統] 已加入專屬房間，ID: ${roomId}`);
-        
-        // (選用) 可以在 UI 上顯示房間號，讓使用者知道自己在哪
-        // document.getElementById('room-display').innerText = `Room: ${roomId}`;
     } else {
-        // 沒房間號，使用公開頻道
         currentMqttTopic = MQTT_BASE_TOPIC;
         console.log(`🌍 [系統] 無房間號，加入公共頻道`);
     }
 
-    // B. 開始連線 (建議用 EMQX)
+    // B. 開始連線
     try {
         console.log(`[MQTT] 正在連線至頻道: ${currentMqttTopic}`);
-        
-        // 使用 EMQX Broker
+
         mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
             clientId: 'Alchemy_' + Math.random().toString(16).substr(2, 8),
             keepalive: 60
@@ -185,41 +177,36 @@ function initMqttConnection() {
         // C. 連線成功後的訂閱
         mqttClient.on('connect', () => {
             console.log("%c[MQTT] ✅ 連線成功！", "color: #00ff00; font-weight: bold;");
-            updateMqttStatusUI(true); // 讓燈號變綠
+            updateMqttStatusUI(true);
 
-            // ★ 關鍵：訂閱剛剛決定好的 Topic
             mqttClient.subscribe(currentMqttTopic, (err) => {
                 if (!err) {
                     console.log(`[MQTT] 已訂閱: ${currentMqttTopic}`);
-                    
-                    // 如果是用戶透過 Link 進來的，可以給個提示
-                    if (roomId) {
-                        // 這裡可以用你的 showToast 或 alert
-                        console.log(`✨ 已連線至診間 #${roomId}`);
-                    }
+                    if (roomId) console.log(`✨ 已連線至診間 #${roomId}`);
+
+                    // ★★★ 新增：連線成功後，立刻同步一次等級資料 (解決網頁刷新需求) ★★★
+                    setTimeout(() => {
+                        broadcastPlayerLevel();
+                    }, 500); // 稍微延遲一下確保穩定
                 }
             });
         });
 
-        // ... (原本的 error, offline 監聽邏輯保持不變) ...
-        
-        // D. 訊息接收 (這裡也要改判斷 topic)
+        // ... (原本的 error, offline 監聽保持不變，略) ...
+
+        // D. 訊息接收 (保持不變)
         mqttClient.on('message', (topic, message) => {
-            // 確保訊息來自我們訂閱的那個頻道
             if (topic === currentMqttTopic) {
                 try {
                     const payload = JSON.parse(message.toString());
-                    
-                    // 過濾自己發出的
-                    if (payload.source === 'AlchemySystem') return;
+                    if (payload.source === 'AlchemySystem') return; // 過濾自己
 
-                    // 處理邏輯 (原本的內容)
                     if (payload.test === true || (payload.message && !payload.diagnosis)) {
-                         console.log("🧪 [系統] 收到測試訊號");
-                         alert(`💬 來自醫館的訊息：\n\n${payload.message}`);
-                         return;
+                        console.log("🧪 [系統] 收到測試訊號");
+                        // alert(`💬 來自醫館的訊息：\n\n${payload.message}`); // 建議註解掉 alert 避免干擾
+                        return;
                     }
-                    
+
                     const patientData = payload.patientData || payload.data || payload;
                     handleIncomingPatientData(patientData, 'MQTT');
 
@@ -398,7 +385,7 @@ function log(msg, type = 'info') {
 
     const p = document.createElement('div');
     const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-    
+
     // 處理物件類型的訊息 (轉為字串以免顯示 [object Object])
     let textContent = msg;
     if (typeof msg === 'object') {
@@ -410,13 +397,13 @@ function log(msg, type = 'info') {
     }
 
     p.textContent = `[${time}] ${textContent}`;
-    
+
     // 設定樣式類別
     p.className = `log-entry log-${type}`;
 
     // 根據你的習慣，原本是 prepend (新訊息在最上面)
     consoleDiv.prepend(p);
-    
+
     // 如果你希望訊息過多時自動刪除舊的 (避免記憶體爆掉)，可以加這段：
     if (consoleDiv.children.length > 200) {
         consoleDiv.removeChild(consoleDiv.lastChild);
@@ -431,11 +418,11 @@ function setupConsoleInterceptor() {
     const originalError = console.error;
 
     // 2. 覆寫 console.log
-    console.log = function(...args) {
+    console.log = function (...args) {
         originalLog.apply(console, args); // 讓瀏覽器 F12 還是看得到
         // 將參數陣列轉為單一字串
         const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
-        
+
         // 特殊判斷：如果是 MQTT 相關訊息，給予特殊顏色
         if (msg.includes('[MQTT]') || msg.includes('[系統]')) {
             log(msg, 'mqtt');
@@ -445,14 +432,14 @@ function setupConsoleInterceptor() {
     };
 
     // 3. 覆寫 console.warn
-    console.warn = function(...args) {
+    console.warn = function (...args) {
         originalWarn.apply(console, args);
         const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
         log(msg, 'warn');
     };
 
     // 4. 覆寫 console.error
-    console.error = function(...args) {
+    console.error = function (...args) {
         originalError.apply(console, args);
         const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
         log(msg, 'error');
@@ -688,7 +675,7 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
     let rawMag2 = m2.max * effectiveRate * (w2 / totalW);
 
     // ★★★ 新增：同屬性共鳴係數 (1.5倍) ★★★
-    let resonanceBonus = 1.0; 
+    let resonanceBonus = 1.0;
 
     // 條件：屬性相同 且 不是全屬性(全屬性通常不參與這種極端共鳴) 且 真的有放第二種材料
     if (m1.element === m2.element && m1.element !== Elements.ALL && w2 > 0) {
@@ -813,9 +800,9 @@ function setupMapInteractions() {
             mapPanY += dy;
 
             checkMapBoundaries(canvas.width, canvas.height);
-            
+
             // ★ 改用節流請求
-            requestMapRedraw(); 
+            requestMapRedraw();
             return;
         }
 
@@ -999,7 +986,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
         // ★ 核心邏輯：等級過濾 ★
         // 取得配方需求等級 (若無則預設1)
         const reqLv = r.levelRequired || 1;
-        
+
         // 如果玩家等級 < 需求等級，則完全不繪製 (隱藏)
         if (playerLevel < reqLv) return;
 
@@ -1052,7 +1039,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
         ctx.strokeStyle = borderColor; ctx.lineWidth = isTargetHover ? 2 : 1.5; ctx.stroke();
 
         ctx.textBaseline = "middle"; ctx.textAlign = "center";
-        
+
         // 文字顯示邏輯
         if (isDiscovered) {
             const char = rName.length > 1 ? rName[1] : rName[0];
@@ -1122,7 +1109,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
         const curDrawY = cy - (preview.cur.y * pixelsPerUnit);
         drawArrow(ctx, cx, cy, maxDrawX, maxDrawY, "rgba(212, 175, 55, 0.6)", true);
         drawArrow(ctx, cx, cy, curDrawX, curDrawY, "#888", false);
-        drawDanIcon(ctx, cx, cy, currentIconRadius, "丹", true); 
+        drawDanIcon(ctx, cx, cy, currentIconRadius, "丹", true);
     }
 
     // --- 8. Tooltip ---
@@ -1258,17 +1245,17 @@ function getMaterialSVG(key, color) {
     // 預設 SVG 屬性
     const size = 40; // Icon 大小
     const commonStyle = `width:${size}px; height:${size}px; fill:${color}; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); transition: all 0.3s;`;
-    
+
     // 定義路徑 (Paths)
     const paths = {
         // 1. 礦石/石塊 (丹砂, 雄黃, 赤石脂...)
-        ORE: "M12,2L4,8V20L10,22L20,18L22,6L12,2M11,18L6,16V9L11,6V18M13,17V6.5L19,8.5V16L13,17Z", 
+        ORE: "M12,2L4,8V20L10,22L20,18L22,6L12,2M11,18L6,16V9L11,6V18M13,17V6.5L19,8.5V16L13,17Z",
         // 2. 金屬/錠 (黃金, 銅, 黑鉛...)
-        METAL: "M3,6H21V18H3V6M4,13H20V8H4V13M4,17H20V15H4V17Z", 
+        METAL: "M3,6H21V18H3V6M4,13H20V8H4V13M4,17H20V15H4V17Z",
         // 3. 液體/滴狀 (水銀, 松脂...)
-        LIQUID: "M12,2C12,2 5,11 5,16A7,7 0 0,0 12,23A7,7 0 0,0 19,16C19,11 12,2 12,2M12,20A4,4 0 0,1 8,16C8,13.5 12,5.5 12,5.5C12,5.5 16,13.5 16,16A4,4 0 0,1 12,20Z", 
+        LIQUID: "M12,2C12,2 5,11 5,16A7,7 0 0,0 12,23A7,7 0 0,0 19,16C19,11 12,2 12,2M12,20A4,4 0 0,1 8,16C8,13.5 12,5.5 12,5.5C12,5.5 16,13.5 16,16A4,4 0 0,1 12,20Z",
         // 4. 晶體/碎片 (石膏, 雲母, 硝石, 石英...)
-        CRYSTAL: "M12.87,2.05L21.35,10.53L12.87,19.01L4.39,10.53L12.87,2.05M12.87,5.59L7.92,10.53L12.87,15.47L17.82,10.53L12.87,5.59M5.83,21.5L8.66,18.67L5.83,15.84L3,18.67L5.83,21.5M19.92,21.5L22.75,18.67L19.92,15.84L17.09,18.67L19.92,21.5Z", 
+        CRYSTAL: "M12.87,2.05L21.35,10.53L12.87,19.01L4.39,10.53L12.87,2.05M12.87,5.59L7.92,10.53L12.87,15.47L17.82,10.53L12.87,5.59M5.83,21.5L8.66,18.67L5.83,15.84L3,18.67L5.83,21.5M19.92,21.5L22.75,18.67L19.92,15.84L17.09,18.67L19.92,21.5Z",
         // 5. 粉末/堆狀 (硫磺, 黃丹, 松煙...)
         POWDER: "M12,19A1,1 0 0,1 11,20A1,1 0 0,1 10,19A1,1 0 0,1 11,18A1,1 0 0,1 12,19M16,19A1,1 0 0,1 15,20A1,1 0 0,1 14,19A1,1 0 0,1 15,18A1,1 0 0,1 16,19M13,16A1,1 0 0,1 12,17A1,1 0 0,1 11,16A1,1 0 0,1 12,15A1,1 0 0,1 13,16M17,16A1,1 0 0,1 16,17A1,1 0 0,1 15,16A1,1 0 0,1 16,15A1,1 0 0,1 17,16M9,16A1,1 0 0,1 8,17A1,1 0 0,1 7,16A1,1 0 0,1 8,15A1,1 0 0,1 9,16M12,13A1,1 0 0,1 11,14A1,1 0 0,1 10,13A1,1 0 0,1 11,12A1,1 0 0,1 12,13M20,19A1,1 0 0,1 19,20A1,1 0 0,1 18,19A1,1 0 0,1 19,18A1,1 0 0,1 20,19M8,19A1,1 0 0,1 7,20A1,1 0 0,1 6,19A1,1 0 0,1 7,18A1,1 0 0,1 8,19M4,19A1,1 0 0,1 3,20A1,1 0 0,1 2,19A1,1 0 0,1 3,18A1,1 0 0,1 4,19M16,13A1,1 0 0,1 15,14A1,1 0 0,1 14,13A1,1 0 0,1 15,12A1,1 0 0,1 16,13Z"
     };
@@ -1285,7 +1272,7 @@ function getMaterialSVG(key, color) {
     else if (liquids.includes(key)) type = "LIQUID";
     else if (crystals.includes(key)) type = "CRYSTAL";
     else if (powders.includes(key)) type = "POWDER";
-    
+
     // 產生 SVG 字串
     return `
         <div class="mat-icon-wrapper">
@@ -1309,12 +1296,12 @@ function initMaterialGrid() {
 
     // --- 1. 計算允許顯示的材料 ---
     const allowedMaterialIds = new Set();
-    
+
     if (typeof RecipeDB !== 'undefined') {
         RecipeDB.forEach(recipe => {
             // 取得配方需求等級 (若無設定預設為 1)
             const reqLv = recipe.levelRequired || 1;
-            
+
             // ★ 核心邏輯：玩家等級 >= 配方需求等級，該配方的材料才解鎖
             if (playerLevel >= reqLv) {
                 recipe.targets.forEach(matId => allowedMaterialIds.add(matId));
@@ -1334,7 +1321,7 @@ function initMaterialGrid() {
         btn.id = `mat-btn-${key}`;
 
         const matName = TextDB[mat.nameId] || key;
-        
+
         // 生成 Icon
         const iconHtml = getMaterialSVG(key, mat.color);
 
@@ -1719,8 +1706,7 @@ function advanceRitualStep() {
     else { updateRitualBtn(); }
 }
 
-// script.js - 修改 runResultSequence (協調動畫與文字同步)
-
+// [修改] script.js - runResultSequence
 async function runResultSequence() {
     const processText = document.getElementById('process-text');
     const finalContainer = document.getElementById('final-result-container');
@@ -1728,9 +1714,9 @@ async function runResultSequence() {
 
     // 1. 初始化 UI 狀態
     if (finalContainer) finalContainer.classList.add('hidden');
-    if (restartBtn) restartBtn.classList.add('hidden'); // 先隱藏重新按鈕
+    if (restartBtn) restartBtn.classList.add('hidden');
 
-    // 2. ★ 關鍵：先執行計算，取得終點座標 (但不顯示 UI)
+    // 2. 執行計算 (此時雖然算好了，但玩家還沒看到)
     const resultData = await calculateFinalResult();
 
     if (!resultData) {
@@ -1740,12 +1726,10 @@ async function runResultSequence() {
 
     // 3. 設定文字序列
     const messages = ["小心翼翼熄滅火苗...", "用夾子打開丹爐蓋子...", "丹爐中飄出奇特的味道..."];
-    const stepDuration = 1500; // 每段文字顯示 1.5 秒
-    const totalDuration = messages.length * stepDuration; // 總時間 4.5 秒
+    const stepDuration = 1500;
+    const totalDuration = messages.length * stepDuration;
 
-    // 4. ★ 關鍵：同時啟動「地圖動畫」與「文字輪播」
-    // 我們使用 Promise.all 讓它們並行執行
-
+    // 4. 動畫與文字同步執行
     if (processText) {
         processText.classList.remove('hidden');
         processText.className = "";
@@ -1760,15 +1744,20 @@ async function runResultSequence() {
         }
     })();
 
-    // 等待兩者都完成 (理論上時間是一樣的)
+    // 等待兩者都完成
     await Promise.all([animationTask, textTask]);
 
-    // 5. 動畫結束，顯示結果介面
+    // ==========================================
+    // ★★★ 修改重點：動畫結束了，現在才是「揭曉時刻」 ★★★
+    // 這裡才發放經驗值，這樣升級通知就會在結果出現時才跳出來
+    addPlayerExp(resultData.quality);
+    // ==========================================
+
+    // 5. 顯示結果介面
     if (processText) processText.classList.add('hidden');
 
     if (finalContainer) {
         finalContainer.classList.remove('hidden');
-        // 淡入效果
         finalContainer.style.opacity = 0;
         finalContainer.style.transition = "opacity 0.5s";
         requestAnimationFrame(() => finalContainer.style.opacity = 1);
@@ -1776,7 +1765,7 @@ async function runResultSequence() {
 
     if (restartBtn) restartBtn.classList.remove('hidden');
 
-    // 6. 最後定格 (確保地圖狀態正確)
+    // 6. 最後定格
     drawRecipeMap();
 }
 // ==========================================
@@ -1788,7 +1777,7 @@ async function calculateFinalResult() {
     const resultID = generateUniqueBatchID();
 
     if (potMaterials.length < 2) { log("錯誤：材料不足"); return null; }
-    
+
     // 備份資料
     if (lastResultData) {
         previousResultData = lastResultData;
@@ -1819,15 +1808,15 @@ async function calculateFinalResult() {
         // 等級判定
         const reqLv = r.levelRequired || 1;
         if (playerLevel < reqLv) return false;
-        
+
         // 五行判定
         return MaterialDB[r.targets[0]].element === dbMat1.element;
     });
 
     if (primaryCandidates.length === 0) {
         // 這裡有可能是因為五行不對，也可能是因為等級不足導致候選清單為空
-        isSlag = true; 
-        slagReason = "五行不符或等級不足"; 
+        isSlag = true;
+        slagReason = "五行不符或等級不足";
         errorType = "ELEMENT";
     } else {
         let secondaryMatches = primaryCandidates.filter(r => MaterialDB[r.targets[1]].element === dbMat2.element);
@@ -1880,17 +1869,17 @@ async function calculateFinalResult() {
         });
         isSlag = true;
         if (!slagReason) slagReason = "未找到合適配方";
-        
+
         // 如果連兜底都找不到 (例如全配方都未解鎖)，那就是真的純廢料
         if (!bestRecipe) {
-             slagReason = "等級不足，無法辨識";
+            slagReason = "等級不足，無法辨識";
         }
     }
 
     // --- 4. 計算評級 ---
     let matchRatePct = "0.0";
     let bestDist = 0;
-    
+
     // 如果兜底還是沒找到配方 (理論上很少發生)，要防錯
     if (bestRecipe) {
         bestDist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
@@ -1902,7 +1891,7 @@ async function calculateFinalResult() {
         let m1 = (pMat1.id === bestRecipe.targets[0]);
         let m2 = (pMat2.id === bestRecipe.targets[1]);
         if (!m1 && !m2) penalty = 0.64; else if (!m1 || !m2) penalty = 0.8;
-        
+
         matchRate *= penalty;
         matchRatePct = Math.max(0, Math.min(100, matchRate * 100)).toFixed(1);
     }
@@ -1928,7 +1917,7 @@ async function calculateFinalResult() {
     let finalComment = isSlag ? slagReason + " " + randomComment : randomComment;
 
     // --- ★★★ 成長系統：給予經驗值 ★★★ ---
-    addPlayerExp(quality);
+    //addPlayerExp(quality);
     // ------------------------------------
 
     let advice = "";
@@ -2001,7 +1990,7 @@ async function calculateFinalResult() {
 
         symptoms: symptomText,
         symptomIds: (!isSlag && bestRecipe) ? bestRecipe.symptoms : [],
-        
+
         effectId: (!isSlag && bestRecipe) ? bestRecipe.effectId : null,
 
         reaction: reactionText,
@@ -2232,7 +2221,7 @@ function saveToHistory(data) {
 
     // 寫入 LocalStorage
     localStorage.setItem('alchemy_history_storage', JSON.stringify(historyStorage));
-    
+
     // ★★★ 新增：當有新紀錄產生時，更新快取，確保地圖顯示正確 ★★★
     // (如果這是新發現的配方，這裡更新後，地圖上的鎖頭就會打開)
     refreshDiscoveredCache();
@@ -2678,11 +2667,11 @@ function renderEffectList() {
         });
 
         // ... (以下渲染程式碼保持不變) ...
-        
+
         // 為了確保你複製完整，這裡提供後半段的簡寫：
         const div = document.createElement('div');
         div.className = 'effect-item';
-        
+
         // ... (Header 生成) ...
         const countText = matchedRecipes.length > 0 ? `(${matchedRecipes.length})` : "";
         const headerHtml = `
@@ -2694,7 +2683,7 @@ function renderEffectList() {
 
         // ... (Content 生成) ...
         let rowsHtml = `<div class="effect-details" style="display:none;">`;
-        
+
         if (matchedRecipes.length === 0) {
             rowsHtml += `<div style="padding: 15px; text-align: center; color: #666; font-size: 0.9rem;">還未探索到相關配方</div>`;
         } else {
@@ -2950,7 +2939,7 @@ function handleIncomingPatientData(newData, sourceName) {
 
     // --- 修正策略：直接更新，並用 Toast 通知 ---
     // 不使用 confirm/alert，避免在背景或操作其他 UI 時報錯
-    
+
     console.log(`[系統] 收到來自【${sourceName}】的新資料，自動更新。`);
     loadPatientData(newData);
 
@@ -2966,7 +2955,7 @@ function handleIncomingPatientData(newData, sourceName) {
 
 function getPatientDataDiffs(current, rawNewData) {
     const diffs = [];
-    
+
     // 1. 解析新資料 (模擬 loadPatientData 的解析邏輯)
     // 必須先將 rawNewData 轉成跟 current 一樣的格式才能比對
     let newObj = {};
@@ -2976,7 +2965,7 @@ function getPatientDataDiffs(current, rawNewData) {
         // 新版完整格式
         newObj.name = diagnosed.customerName || "未知";
         newObj.element = diagnosed.constitution || "未知";
-        
+
         // 毒素處理 (字串或物件轉字串)
         if (typeof diagnosed.toxicity === 'object' && diagnosed.toxicity !== null) {
             newObj.toxin = `${diagnosed.toxicity.current} / ${diagnosed.toxicity.max}`;
@@ -3030,7 +3019,7 @@ function getPatientDataDiffs(current, rawNewData) {
 // script.js - 修正：強力載入病患資料 (解決 Unknown 問題)
 function loadPatientData(data) {
     console.log("[系統] 開始載入病患資料...", data);
-    
+
     // 1. 初始化物件，並強制賦予 ID (沒有就用時間戳記補上)
     let patient = {};
     patient.id = data.id || (data.diagnosis ? data.diagnosis.id : null) || `TEMP_${Date.now()}`;
@@ -3073,7 +3062,7 @@ function loadPatientData(data) {
     currentPatientData = patient;
 
     // 呼叫渲染函式 (如果有定義的話)
-    if(typeof renderPatientInfo === 'function') {
+    if (typeof renderPatientInfo === 'function') {
         renderPatientInfo(patient);
     }
 
@@ -3082,14 +3071,14 @@ function loadPatientData(data) {
     const btn = document.getElementById('toggle-patient-btn');
     if (panel) panel.classList.remove('hidden');
     if (btn) btn.classList.add('active');
-    
+
     console.log(`[系統] 病患資料載入完成: ${patient.name} (ID: ${patient.id})`);
 }
 // [修正後] script.js - 靜態資料檢查 (URL / LocalStorage)
 // 邏輯變更：找到資料後，不再直接 loadPatientData，而是交給 handleIncomingPatientData 統一處理
 
 function checkPatientData() {
-    console.group("🔍 [系統診斷] 開始檢查靜態病患資料...");    
+    console.group("🔍 [系統診斷] 開始檢查靜態病患資料...");
 
     // ==========================================
     // 1. 優先檢查 Hash Payload (#payload=...)
@@ -3345,7 +3334,7 @@ function openDeliveryModal() {
     } else {
         inventoryStorage.forEach((item, index) => {
             const quality = item.quality || item.grade || 'D';
-            
+
             // --- ★★★ 修正重點：改為優先顯示「療效」(Symptoms) ★★★ ---
             let effectDisplay = "---";
 
@@ -3382,7 +3371,7 @@ function openDeliveryModal() {
             else if (quality === 'S') qColor = "#FFD700";
             else if (quality === 'A') qColor = "#e67e22";
             else if (quality === 'B') qColor = "#3498db";
-            
+
             // 毒素警告
             const toxinVal = item.toxin || 0;
             const toxinClass = toxinVal > 30 ? "warn" : "";
@@ -3394,7 +3383,7 @@ function openDeliveryModal() {
             row.style.borderBottom = "1px solid #333";
             row.style.alignItems = "center";
             row.style.fontSize = "0.9rem";
-            
+
             row.innerHTML = `
                 <div style="text-align:center;">
                     <input type="checkbox" onchange="toggleDeliverySelection(${index}, this)">
@@ -3526,7 +3515,7 @@ function saveInventory() {
 function submitMedicinesToClinic() {
     // 1. 檢查是否選取藥品
     if (typeof selectedDeliveryIndices === 'undefined' || selectedDeliveryIndices.length === 0) {
-        if(typeof showToast === 'function') showToast("請至少選擇一種藥品！");
+        if (typeof showToast === 'function') showToast("請至少選擇一種藥品！");
         return;
     }
 
@@ -3535,7 +3524,7 @@ function submitMedicinesToClinic() {
     const currentRoomId = urlParams.get('room_id') || urlParams.get('room') || "1223";
 
     // 3. 準備病患資訊
-    let targetId = null; 
+    let targetId = null;
     let targetName = "Unknown";
     if (currentPatientData) {
         targetName = currentPatientData.name || "Unknown";
@@ -3596,7 +3585,7 @@ function submitMedicinesToClinic() {
     });
 
     const payload = {
-        type: 'MEDICINE_DELIVERY', 
+        type: 'MEDICINE_DELIVERY',
         roomId: currentRoomId,
         senderId: 'ALCHEMY_SYSTEM',
         targetPatientId: targetId,
@@ -3615,13 +3604,13 @@ function submitMedicinesToClinic() {
         mqttClient.publish(`thirza/alchemy/v1/${currentRoomId}`, payloadString);
         console.log(`📡 [MQTT] 已發送`);
         isSent = true;
-        if(typeof showToast === 'function') showToast(`✅ 已發送給 ${targetName}`);
+        if (typeof showToast === 'function') showToast(`✅ 已發送給 ${targetName}`);
     } else {
         // 本地廣播備案
         if (typeof broadcastChannel !== 'undefined' && broadcastChannel) {
             broadcastChannel.postMessage(payload);
             isSent = true;
-            if(typeof showToast === 'function') showToast(`✅ (廣播) 已發送`);
+            if (typeof showToast === 'function') showToast(`✅ (廣播) 已發送`);
         } else {
             alert("網路未連線！無法傳送。");
         }
@@ -3631,10 +3620,10 @@ function submitMedicinesToClinic() {
     if (isSent) {
         selectedDeliveryIndices.sort((a, b) => b - a);
         selectedDeliveryIndices.forEach(idx => inventoryStorage.splice(idx, 1));
-        saveInventory(); 
-        if (typeof renderInventory === 'function') renderInventory(); 
+        saveInventory();
+        if (typeof renderInventory === 'function') renderInventory();
         closeDeliveryModal();
-    } 
+    }
 
     if (btn) btn.disabled = false;
 }
@@ -3656,9 +3645,9 @@ function resetAllSystemData() {
     localStorage.removeItem('alchemy_history_storage'); // 歷史紀錄
     localStorage.removeItem('alchemy_inventory');       // 背包
     localStorage.removeItem('incoming_patient');        // 病患資料
-    
+
     // ★★★ 新增：清除等級與經驗值 ★★★
-    localStorage.removeItem('alchemy_level_data');      
+    localStorage.removeItem('alchemy_level_data');
 
     // 2. 清空記憶體變數 (雖然 reload 會重置，但為了保險)
     historyStorage = { NEUTRAL: [], EXTEND: [], BIAS: [] };
@@ -3763,12 +3752,12 @@ function regenerateItemFromHistory(index, event) {
         alert("無法再製渣滓！");
         return;
     }
-    
+
     // 建立新物件
     const newItem = {
         ...item,
         // ✅ 修改後：使用防撞號生成器，確保這個新批號也是全場唯一的
-        id: generateUniqueBatchID() 
+        id: generateUniqueBatchID()
     };
     // 呼叫存檔 (saveToInventory 會再幫它加 UUID，雙重保險)
     saveToInventory(newItem);
@@ -3815,7 +3804,7 @@ function generateUniqueBatchID() {
 // script.js - 新增優化用的全域變數與函式
 
 // --- 優化 1: 渲染節流鎖 ---
-let isMapRedrawPending = false; 
+let isMapRedrawPending = false;
 
 // --- 優化 2: 已探索配方快取 (Set 結構查詢速度極快) ---
 let discoveredRecipeCache = new Set();
@@ -3851,14 +3840,14 @@ function refreshDiscoveredCache() {
 function showToast(msg, duration = 2000) {
     const toast = document.createElement('div');
     toast.textContent = msg;
-    
+
     // --- 樣式設定 ---
     toast.style.position = 'fixed';
     // ★★★ 修改：改為上方顯示 (top: 15% 大約在視窗上方 1/6 處) ★★★
-    toast.style.top = '15%'; 
+    toast.style.top = '15%';
     toast.style.left = '50%';
     toast.style.transform = 'translateX(-50%)';
-    
+
     toast.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'; // 稍微深一點
     toast.style.color = '#fff';
     toast.style.padding = '15px 30px'; //稍微大一點
@@ -3870,7 +3859,7 @@ function showToast(msg, duration = 2000) {
     toast.style.border = '1px solid #d4af37'; // 加個金邊比較高級
     toast.style.transition = 'opacity 0.3s, transform 0.3s';
     toast.style.pointerEvents = 'none'; // 讓滑鼠可以穿透，不擋操作
-    
+
     document.body.appendChild(toast);
 
     // 淡出移除動畫
@@ -3903,27 +3892,27 @@ function updateLevelUI() {
     if (typeof LevelAttrDB === 'undefined') return;
 
     if (levelEl && expBar && expText) {
-        
+
         // 1. 檢查是否有下一級 (判斷是否滿等)
         const nextLvlAttr = LevelAttrDB.find(x => x.level === playerLevel + 1);
 
         if (!nextLvlAttr) {
             // ★★★ 滿等狀態處理 ★★★
-            
+
             // 需求：等級數字改為 "Max"
             levelEl.textContent = "Max";
-            
+
             // 需求：經驗值繼續顯示 (顯示當前總累積量)
             // 進度條全滿，文字顯示 "目前總經驗 (MAX)"
             expBar.style.width = '100%';
             expText.textContent = `${Math.floor(currentExp)} (MAX)`;
-            
+
             // 如果你想更酷一點，可以讓進度條變成金色或其他特效 (可選)
             expBar.style.background = "linear-gradient(90deg, #FFD700, #FFCC00)";
 
         } else {
             // --- 一般狀態 (未滿等) ---
-            
+
             // 顯示數字等級
             levelEl.textContent = playerLevel;
 
@@ -3931,49 +3920,39 @@ function updateLevelUI() {
             const currentLvlAttr = LevelAttrDB.find(x => x.level === playerLevel);
             const prevSum = currentLvlAttr ? currentLvlAttr.expSum : 0;
             const targetSum = nextLvlAttr.expSum;
-            
+
             const range = targetSum - prevSum; // 這個等級區間有多少經驗
             const progress = Math.max(0, currentExp - prevSum); // 在這個區間練了多少
-            
+
             // 計算百分比
             const percent = Math.min(100, (progress / range) * 100);
             expBar.style.width = `${percent}%`;
-            
+
             // 恢復原本的進度條顏色 (避免被 Max 狀態汙染)
-            expBar.style.background = ""; 
+            expBar.style.background = "";
 
             // 文字顯示：當前 / 目標
             expText.textContent = `${Math.floor(currentExp)} / ${targetSum}`;
         }
     }
 }
-
-// script.js - 修改 addPlayerExp (滿等特殊通知)
+// [修改] script.js - addPlayerExp
 function addPlayerExp(grade) {
     if (typeof ExpGetDB === 'undefined' || typeof LevelAttrDB === 'undefined') return;
 
     // 1. 查表獲取經驗
     let gain = ExpGetDB[grade] || 0;
-    
-    // 特殊處理：炸爐給少許經驗
-    if (grade === 'SLAG' && !ExpGetDB['SLAG']) {
-        gain = 5; 
-    }
+
+    if (grade === 'SLAG' && !ExpGetDB['SLAG']) gain = 5;
 
     if (gain > 0) {
-        // ★★★ 需求確認：經驗值仍可繼續累計，不影響 ★★★
-        // 這裡直接加進去，不做上限鎖定 (Cap)，符合你的需求
         currentExp += gain;
-
-        // 2. 檢查升級 (While 迴圈支援一次升多級)
         let leveledUp = false;
-        
+
+        // 2. 檢查升級
         while (true) {
             const nextLvlAttr = LevelAttrDB.find(x => x.level === playerLevel + 1);
-            
-            // 如果沒有下一級，代表已經是最高等，跳出迴圈
-            if (!nextLvlAttr) break; 
-
+            if (!nextLvlAttr) break; // 滿等
             if (currentExp >= nextLvlAttr.expSum) {
                 playerLevel++;
                 leveledUp = true;
@@ -3988,35 +3967,64 @@ function addPlayerExp(grade) {
             exp: currentExp
         }));
 
-        // 4. 更新 UI (會呼叫上面改過的 updateLevelUI)
+        // 4. 更新 UI
         updateLevelUI();
 
-        // 5. 升級觸發通知
+        // 5. 升級通知 (保持不變)
         if (leveledUp) {
-            // 再次檢查現在是否已經變成最高級
             const isMaxNow = !LevelAttrDB.find(x => x.level === playerLevel + 1);
+            const msg = isMaxNow
+                ? `🎉 恭喜！熟練度已提升到最高 (MAX)！`
+                : `🎉 恭喜升級！等級提升至 Lv.${playerLevel}！`;
 
-            if (isMaxNow) {
-                // ★★★ 需求確認：等級提升到底時，顯示特殊通知 ★★★
-                if (typeof showToast === 'function') {
-                    showToast(`🎉 恭喜！熟練度已提升到最高 (MAX)！`, 5000);
-                } else {
-                    alert(`🎉 恭喜！熟練度已提升到最高 (MAX)！`);
-                }
-            } else {
-                // 一般升級通知
-                if (typeof showToast === 'function') {
-                    showToast(`🎉 恭喜升級！等級提升至 Lv.${playerLevel}！`, 4000);
-                } else {
-                    alert(`恭喜升級！等級提升至 Lv.${playerLevel}！`);
-                }
-            }
-            
-            // 升級後刷新地圖與列表
+            if (typeof showToast === 'function') showToast(msg, 4000);
+            else alert(msg);
+
             drawRecipeMap();
-            if (currentStep === 0 || currentStep === 2) {
-                initMaterialGrid(); 
-            }
+            if (currentStep === 0 || currentStep === 2) initMaterialGrid();
         }
+
+        // ==========================================
+        // ★★★ 修改重點：經驗值或等級變動後，同步到雲端 ★★★
+        broadcastPlayerLevel();
+        // ==========================================
+    }
+}
+// [新增] script.js - 發送玩家等級資料到雲端
+function broadcastPlayerLevel() {
+    // 1. 檢查 MQTT 連線狀態
+    if (!mqttClient || !mqttClient.connected) {
+        console.warn("[MQTT] 尚未連線，無法同步等級資料");
+        return;
+    }
+
+    // 2. 取得房號 (用於識別是哪個煉丹師)
+    const roomId = getRoomIdFromUrl() || "PUBLIC";
+
+    // 3. 準備 Payload
+    const payload = {
+        type: 'PLAYER_LEVEL_SYNC', // 定義一個新的類型讓診間判斷
+        roomId: roomId,
+        senderId: 'ALCHEMY_SYSTEM',
+        level: playerLevel,       // 當前等級
+        exp: currentExp,          // 當前經驗
+        maxExp: (LevelAttrDB[playerLevel] ? LevelAttrDB[playerLevel].expSum : "MAX"), // 當前等級總經驗需求
+        timestamp: Date.now()
+    };
+
+    console.log(`📡 [MQTT] 同步等級資料: Lv.${playerLevel}`, payload);
+
+    // 4. 發送 (同時發送到公頻和房號頻)
+    // 這裡沿用你原本的 Topic 邏輯
+    const topicPub = roomId === "PUBLIC" ? 'thirza/alchemy/v1' : `thirza/alchemy/v1/${roomId}`;
+
+    try {
+        mqttClient.publish(topicPub, JSON.stringify(payload));
+        // 如果想要保險一點，公頻也發一份，視你的需求而定
+        if (topicPub !== 'thirza/alchemy/v1') {
+            mqttClient.publish('thirza/alchemy/v1', JSON.stringify(payload));
+        }
+    } catch (e) {
+        console.error("[MQTT] 等級同步發送失敗:", e);
     }
 }
