@@ -3638,15 +3638,15 @@ function submitMedicinesToClinic() {
 
     if (btn) btn.disabled = false;
 }
-// script.js - 初始化玩家紀錄 (雙重確認)
+// script.js - 初始化玩家紀錄 (雙重確認) - 已加入等級重置
 function resetAllSystemData() {
-    // 第一次確認
-    if (!confirm("⚠️ 警告：您即將進行「系統初始化」。\n\n這將會清除：\n1. 所有煉丹歷史紀錄\n2. 背包內所有丹藥\n3. 已發現的配方狀態\n4. 當前病患資料\n\n確定要繼續嗎？")) {
+    // 第一次確認 (更新文字，告知會清除等級)
+    if (!confirm("⚠️ 警告：您即將進行「系統初始化」。\n\n這將會清除：\n1. 所有煉丹歷史紀錄\n2. 背包內所有丹藥\n3. 已發現的配方狀態\n4. 當前病患資料\n5. ★ 煉丹等級與經驗值 ★\n\n確定要繼續嗎？")) {
         return;
     }
 
     // 第二次確認 (防呆)
-    if (!confirm("⛔ 最後警告 ⛔\n\n此操作「無法復原」！\n所有的努力都將化為烏有。\n\n您真的確定要重置所有資料嗎？")) {
+    if (!confirm("⛔ 最後警告 ⛔\n\n此操作「無法復原」！\n所有的努力(包含等級)都將化為烏有。\n\n您真的確定要重置所有資料嗎？")) {
         return;
     }
 
@@ -3656,17 +3656,20 @@ function resetAllSystemData() {
     localStorage.removeItem('alchemy_history_storage'); // 歷史紀錄
     localStorage.removeItem('alchemy_inventory');       // 背包
     localStorage.removeItem('incoming_patient');        // 病患資料
-
-    // 如果還有其他儲存的 key，請在此加入
-    // localStorage.clear(); // 或者直接暴力清空所有 (視需求而定)
+    
+    // ★★★ 新增：清除等級與經驗值 ★★★
+    localStorage.removeItem('alchemy_level_data');      
 
     // 2. 清空記憶體變數 (雖然 reload 會重置，但為了保險)
     historyStorage = { NEUTRAL: [], EXTEND: [], BIAS: [] };
     inventoryStorage = [];
     currentPatientData = null;
+    // 重置等級變數
+    playerLevel = 1;
+    currentExp = 0;
 
     // 3. UI 顯示重置訊息
-    alert("✨ 系統已初始化完畢，網頁將重新載入。");
+    alert("✨ 系統已初始化完畢 (等級已歸零)，網頁將重新載入。");
 
     // 4. 強制重整頁面以套用變更
     window.location.reload();
@@ -3890,9 +3893,7 @@ function resetGame() {
 
 // ==========================================
 // 新增 Function：成長系統邏輯
-// ==========================================
-// script.js - 修改 updateLevelUI (改成顯示 累積數值 / 目標數值)
-
+// script.js - 修改 updateLevelUI (支援 Max 顯示與無限經驗累積)
 function updateLevelUI() {
     const levelEl = document.getElementById('player-level');
     const expBar = document.getElementById('exp-bar-fill');
@@ -3902,59 +3903,76 @@ function updateLevelUI() {
     if (typeof LevelAttrDB === 'undefined') return;
 
     if (levelEl && expBar && expText) {
-        // 1. 顯示等級
-        levelEl.textContent = playerLevel;
-
-        // 2. 取得當前與下一級資料
-        const currentLvlAttr = LevelAttrDB.find(x => x.level === playerLevel);
+        
+        // 1. 檢查是否有下一級 (判斷是否滿等)
         const nextLvlAttr = LevelAttrDB.find(x => x.level === playerLevel + 1);
 
         if (!nextLvlAttr) {
-            // 滿等狀態
+            // ★★★ 滿等狀態處理 ★★★
+            
+            // 需求：等級數字改為 "Max"
+            levelEl.textContent = "Max";
+            
+            // 需求：經驗值繼續顯示 (顯示當前總累積量)
+            // 進度條全滿，文字顯示 "目前總經驗 (MAX)"
             expBar.style.width = '100%';
-            expText.textContent = 'MAX LEVEL';
+            expText.textContent = `${Math.floor(currentExp)} (MAX)`;
+            
+            // 如果你想更酷一點，可以讓進度條變成金色或其他特效 (可選)
+            expBar.style.background = "linear-gradient(90deg, #FFD700, #FFCC00)";
+
         } else {
-            // 計算區間 (Bar 條的長度還是要算區間比例，這樣視覺才對)
+            // --- 一般狀態 (未滿等) ---
+            
+            // 顯示數字等級
+            levelEl.textContent = playerLevel;
+
+            // 計算區間 (Bar 條的長度算區間比例)
+            const currentLvlAttr = LevelAttrDB.find(x => x.level === playerLevel);
             const prevSum = currentLvlAttr ? currentLvlAttr.expSum : 0;
             const targetSum = nextLvlAttr.expSum;
             
             const range = targetSum - prevSum; // 這個等級區間有多少經驗
             const progress = Math.max(0, currentExp - prevSum); // 在這個區間練了多少
             
-            // 計算百分比 (給進度條用)
+            // 計算百分比
             const percent = Math.min(100, (progress / range) * 100);
             expBar.style.width = `${percent}%`;
+            
+            // 恢復原本的進度條顏色 (避免被 Max 狀態汙染)
+            expBar.style.background = ""; 
 
-            // ★★★ 修改：文字顯示改成「當前總經驗 / 升級目標總經驗」 ★★★
-            // 例如：60 / 200 (而不是原本的 10 / 150)
+            // 文字顯示：當前 / 目標
             expText.textContent = `${Math.floor(currentExp)} / ${targetSum}`;
         }
     }
 }
 
-/**
- * 增加經驗值並存檔
- */
+// script.js - 修改 addPlayerExp (滿等特殊通知)
 function addPlayerExp(grade) {
     if (typeof ExpGetDB === 'undefined' || typeof LevelAttrDB === 'undefined') return;
 
-    // 1. 查表 (ExpGetDB)
+    // 1. 查表獲取經驗
     let gain = ExpGetDB[grade] || 0;
     
-    // 特殊處理：如果 Excel 裡沒有定義 'SLAG'，預設給一點點或 0
+    // 特殊處理：炸爐給少許經驗
     if (grade === 'SLAG' && !ExpGetDB['SLAG']) {
         gain = 5; 
     }
 
     if (gain > 0) {
+        // ★★★ 需求確認：經驗值仍可繼續累計，不影響 ★★★
+        // 這裡直接加進去，不做上限鎖定 (Cap)，符合你的需求
         currentExp += gain;
-        // console.log(`[成長] 評價 ${grade} -> 獲得 ${gain} exp`);
 
         // 2. 檢查升級 (While 迴圈支援一次升多級)
         let leveledUp = false;
+        
         while (true) {
             const nextLvlAttr = LevelAttrDB.find(x => x.level === playerLevel + 1);
-            if (!nextLvlAttr) break; // 已達頂
+            
+            // 如果沒有下一級，代表已經是最高等，跳出迴圈
+            if (!nextLvlAttr) break; 
 
             if (currentExp >= nextLvlAttr.expSum) {
                 playerLevel++;
@@ -3964,31 +3982,41 @@ function addPlayerExp(grade) {
             }
         }
 
-        // 3. 存檔 (重要！)
+        // 3. 存檔
         localStorage.setItem('alchemy_level_data', JSON.stringify({
             level: playerLevel,
             exp: currentExp
         }));
 
-        // 4. 更新 UI
+        // 4. 更新 UI (會呼叫上面改過的 updateLevelUI)
         updateLevelUI();
 
-        // 5. 升級觸發
+        // 5. 升級觸發通知
         if (leveledUp) {
-            if (typeof showToast === 'function') {
-                showToast(`🎉 恭喜升級！等級提升至 Lv.${playerLevel}！`, 4000);
+            // 再次檢查現在是否已經變成最高級
+            const isMaxNow = !LevelAttrDB.find(x => x.level === playerLevel + 1);
+
+            if (isMaxNow) {
+                // ★★★ 需求確認：等級提升到底時，顯示特殊通知 ★★★
+                if (typeof showToast === 'function') {
+                    showToast(`🎉 恭喜！熟練度已提升到最高 (MAX)！`, 5000);
+                } else {
+                    alert(`🎉 恭喜！熟練度已提升到最高 (MAX)！`);
+                }
             } else {
-                alert(`恭喜升級！等級提升至 Lv.${playerLevel}！`);
+                // 一般升級通知
+                if (typeof showToast === 'function') {
+                    showToast(`🎉 恭喜升級！等級提升至 Lv.${playerLevel}！`, 4000);
+                } else {
+                    alert(`恭喜升級！等級提升至 Lv.${playerLevel}！`);
+                }
             }
             
-            // 升級後，因為有新配方解鎖，需要刷新材料列表與地圖             
+            // 升級後刷新地圖與列表
             drawRecipeMap();
-        }
-        // ★★★ 關鍵修正：只在「材料選擇階段」才刷新列表 ★★★
-            // 如果當前步驟是 0 (選主材) 或 2 (選副材)，才刷新 UI
-            // 避免在 Step 5 (結算) 時因為升級而導致 hidden class 被移除
             if (currentStep === 0 || currentStep === 2) {
                 initMaterialGrid(); 
             }
+        }
     }
 }
