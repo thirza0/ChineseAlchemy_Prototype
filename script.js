@@ -4,7 +4,6 @@
 // 2. 地圖繪製時新增：原點->玩家(實線)、原點->目標(虛線)。
 // 3. 視覺輔助：實線為深灰，虛線為金色，幫助玩家判斷角度與距離差異。
 
-// --- 0. 評語資料庫 ---
 const CommentsDB = {
     U: ["傳說中的境界，神乎其技！", "此物一出，萬藥臣服。", "已臻化境，丹神降臨！"],
     S: ["奪天地造化之功！", "完美無瑕，神品！", "此丹只應天上有。", "妙手回春，絕妙！"],
@@ -43,9 +42,6 @@ let isFireComplete = false;
 const FIRE_DECAY_PER_SEC = 0.2;
 let auxiliaryProgress = 0;
 const AUXILIARY_MAX = 3;
-// ★★★ 修改建議：將常數改為可調整的變數 ★★★
-// 原本是 const BASE_DISTANCE_COEF = 0.5;
-// 改成下面這樣：
 
 let BASE_RATIO = 0.5;   // 基礎佔比 (原本的 0.5)
 let GRIND_RATIO = 0.5;  // 研磨佔比 (原本是 1 - 0.5 算出來的)
@@ -75,7 +71,6 @@ let previousResultData = null;       // ★ 新增：存完整 UI 資料 (給右
 
 let isShowingPreviousResult = false; // 切換開關
 
-// ... (其餘常數保持不變) ...
 // Icon 縮放調整參數
 const ICON_BASE_RADIUS = 10;
 const ICON_ZOOM_SCALE = 2;
@@ -107,8 +102,6 @@ let selectedDeliveryIds = [];
 // ★ 請在此填入同事的問診系統網址 (若同資料夾可填相對路徑，如 "diagnosis.html")
 const CLINIC_URL = "https://lindaagilebyte.github.io/Prototype_03/"; // 範例
 
-// script.js - 全域變數區新增
-
 // --- 通訊設定 ---
 let transmissionMode = 'MQTT'; // 預設模式: 'BROADCAST' or 'MQTT'
 const broadcastChannel = new BroadcastChannel('alchemy_clinic_channel');
@@ -121,6 +114,12 @@ const MQTT_BASE_TOPIC = 'thirza/alchemy/v1'; // 基礎頻道
 let currentMqttTopic = MQTT_BASE_TOPIC;      // 最終使用的頻道 (預設為公開)
 let mqttClient = null;
 
+
+// --- 成長系統變數 ---
+// 嘗試從 LocalStorage 讀取存檔，若無則預設 1 等 0 經驗
+const savedLevelData = JSON.parse(localStorage.getItem('alchemy_level_data')) || {};
+let playerLevel = savedLevelData.level || 1;
+let currentExp = savedLevelData.exp || 0;
 // ==========================================
 // 2. 解析 URL 房間號 (Room ID)
 // ==========================================
@@ -297,6 +296,9 @@ window.onload = function () {
 
     // ★★★ 新增：初始化配方快取 (優化效能) ★★★
     refreshDiscoveredCache();
+    // ★★★ 新增：這裡原本漏掉了，所以重新整理後等級UI沒反應 ★★★
+    // 必須在這裡呼叫一次，把讀取到的經驗值顯示出來
+    updateLevelUI();
 
     // 2. 介面初始化
     showInstructionModal();
@@ -588,7 +590,7 @@ function setStep(step) {
 
     if (step === 0) {
         title.textContent = "步驟 1/2：選擇主要材料";
-        instruct.textContent = "請選擇投入量較多的材料。";
+        instruct.textContent = "請選擇投入的第一個材料。";
         switchPanel('material-grid'); // 顯示材料列表
 
     } else if (step === 1) {
@@ -600,7 +602,7 @@ function setStep(step) {
 
     } else if (step === 2) {
         title.textContent = "步驟 2/2：選擇次要材料";
-        instruct.textContent = "請選擇投入量較少的材料。";
+        instruct.textContent = "請選擇投入的第二個材料。";
         switchPanel('material-grid');
         // 清除選取狀態
         document.querySelectorAll('.mat-btn').forEach(b => b.classList.remove('selected-mat'));
@@ -665,11 +667,10 @@ function resolveDirection(myElement, otherElement) {
     return getBaseDirection(myElement);
 }
 
-// script.js - 修改 calculateCoordinate (加入同屬性共鳴機制)
-
+// script.js - 修正 calculateCoordinate (同屬性 1.5倍共鳴)
 function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
     let m1, m2, w1, w2;
-    // 排序：確保 m1 是權重較大的那個 (雖然數學上加法沒差，但為了邏輯一致性)
+    // 排序
     if (weight1 >= weight2) { m1 = mat1; w1 = weight1; m2 = mat2; w2 = weight2; }
     else { m1 = mat2; w1 = weight2; m2 = mat1; w2 = weight1; }
 
@@ -678,34 +679,33 @@ function calculateCoordinate(mat1, weight1, mat2, weight2, grindRate) {
 
     if (grindRate === undefined) grindRate = 0;
 
-    // 研磨影響係數 (從全域變數讀取配置)
+    // 研磨影響係數 (有效率)
     let effectiveRate = BASE_RATIO + (GRIND_RATIO * grindRate);
 
-    // 1. 計算原始強度 (這是加權平均，結果不會超過 Max)
+    // 1. 計算原始強度 (加權平均)
+    // 這裡算出來的是「如果不考慮共鳴，這兩個材料混合後的基礎強度」
     let rawMag1 = m1.max * effectiveRate * (w1 / totalW);
     let rawMag2 = m2.max * effectiveRate * (w2 / totalW);
 
-    // ★★★ 新增：同屬性共鳴加成 (Resonance Bonus) ★★★
-    let resonanceBonus = 1.0;
+    // ★★★ 新增：同屬性共鳴係數 (1.5倍) ★★★
+    let resonanceBonus = 1.0; 
 
-    // 修改判斷條件：
-    // 1. 屬性相同
-    // 2. 不是全屬性
-    // 3. ★ 新增：次要材料重量必須大於 0 (避免單一材料預覽時誤觸發)
+    // 條件：屬性相同 且 不是全屬性(全屬性通常不參與這種極端共鳴) 且 真的有放第二種材料
     if (m1.element === m2.element && m1.element !== Elements.ALL && w2 > 0) {
-        resonanceBonus = 1.0 + (totalW * 0.1);
+        resonanceBonus = 1.5; // 設定共鳴倍率為 1.5
     }
 
     // 3. 取得向量方向
     let v1 = resolveDirection(m1.element, m2.element);
     let v2 = resolveDirection(m2.element, m1.element);
 
-    // 4. ★ 將 Bonus 乘入最終向量計算
-    // (向量1強度 + 向量2強度) * 共鳴倍率
+    // 4. 計算最終向量 (套用共鳴加成)
+    // 如果是異屬性，bonus 是 1.0 (無影響)
+    // 如果是同屬性，bonus 是 1.5 (整體推更遠)
     let vecX = ((v1.x * rawMag1) + (v2.x * rawMag2)) * resonanceBonus;
     let vecY = ((v1.y * rawMag1) + (v2.y * rawMag2)) * resonanceBonus;
 
-    // 5. 四捨五入到小數點第二位
+    // 5. 四捨五入
     let finalX = Math.round(vecX * 100) / 100;
     let finalY = Math.round(vecY * 100) / 100;
 
@@ -912,9 +912,9 @@ function updateZoomUI() {
         }
     }
 }
-
-// script.js - 修改 drawRecipeMap
-
+// ==========================================
+// 修改 Function: drawRecipeMap
+// ==========================================
 function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     const canvas = document.getElementById('recipe-map');
     if (!canvas) return;
@@ -929,7 +929,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     const cx = (w / 2) + mapPanX;
     const cy = (h / 2) + mapPanY;
 
-    // --- 設定比例尺 ---
+    // --- 比例尺設定 ---
     const viewRadiusUnits = 10.0 / mapZoom;
     const canvasRadiusPx = w / 2;
     const pixelsPerUnit = canvasRadiusPx / viewRadiusUnits;
@@ -942,7 +942,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     ctx.fillStyle = "#FBE9E7"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + far, cy + far); ctx.lineTo(cx - far, cy + far); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#ECEFF1"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - far, cy + far); ctx.lineTo(cx - far, cy - far); ctx.closePath(); ctx.fill();
 
-    // --- 3. 浮水印 (保持不變) ---
+    // --- 3. 浮水印 ---
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const fontSize = 50 + (60 / mapZoom);
     ctx.font = `bold ${fontSize}px 'Microsoft JhengHei'`;
@@ -952,14 +952,14 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     ctx.fillStyle = "rgba(255, 69, 0, 0.15)"; ctx.fillText("火", cx, cy + distPx);
     ctx.fillStyle = "rgba(112, 128, 144, 0.15)"; ctx.fillText("金", cx - distPx, cy);
 
-    // --- 4. 格線與軸線 (保持不變) ---
+    // --- 4. 格線 ---
     const subGridStepUnits = 0.2;
     const subGridStepPx = subGridStepUnits * pixelsPerUnit;
     const labelFontSize = 10 + (mapZoom - 1) * 2;
     ctx.font = `bold ${labelFontSize}px Consolas`;
     ctx.lineWidth = 1;
 
-    // X/Y Grid
+    // Grid Loop (保持原樣)
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     const startX = Math.floor((0 - cx) / subGridStepPx);
     const endX = Math.ceil((w - cx) / subGridStepPx);
@@ -990,25 +990,34 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
     ctx.strokeStyle = "#FF4500"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, h); ctx.stroke();
     ctx.strokeStyle = "#607D8B"; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(0, cy); ctx.stroke();
 
-    // --- 5. 繪製配方點 (保持不變) ---
+    // --- 5. 繪製配方點 ---
     ctx.font = `bold ${10 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
     mapHitZones = [];
     let hoveredRecipe = null;
 
     RecipeDB.forEach(r => {
+        // ★ 核心邏輯：等級過濾 ★
+        // 取得配方需求等級 (若無則預設1)
+        const reqLv = r.levelRequired || 1;
+        
+        // 如果玩家等級 < 需求等級，則完全不繪製 (隱藏)
+        if (playerLevel < reqLv) return;
+
         const drawX = cx + (r.targetX * pixelsPerUnit);
         const drawY = cy - (r.targetY * pixelsPerUnit);
         const rName = TextDB[r.nameId] || "?";
 
         if (drawX < -50 || drawX > w + 50 || drawY < -50 || drawY > h + 50) return;
 
+        // 檢查是否已發現
         const isDiscovered = (typeof isRecipeDiscovered === 'function') ? isRecipeDiscovered(r.nameId) : false;
 
+        // 如果未發現且不是高亮目標，檢查是否開啟提示顯示
         if (!isDiscovered && highlightTargetId !== r.nameId && !showMapHints) return;
 
         mapHitZones.push({ x: drawX, y: drawY, r: currentIconRadius * 1.5, name: rName, tx: r.targetX, ty: r.targetY });
 
-        // 呼吸燈
+        // 呼吸燈效果
         if (highlightTargetId === r.nameId) {
             const pulseRadius = currentIconRadius * 1.5 + Math.sin(highlightPulse) * 5;
             const alpha = 0.5 + Math.sin(highlightPulse) * 0.3;
@@ -1030,7 +1039,7 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
             }
         }
 
-        // 配方點繪製
+        // 繪製點
         const isHint = (!isDiscovered && highlightTargetId !== r.nameId);
         if (isHint) { ctx.save(); ctx.globalAlpha = 0.6; }
 
@@ -1043,32 +1052,32 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
         ctx.strokeStyle = borderColor; ctx.lineWidth = isTargetHover ? 2 : 1.5; ctx.stroke();
 
         ctx.textBaseline = "middle"; ctx.textAlign = "center";
+        
+        // 文字顯示邏輯
         if (isDiscovered) {
             const char = rName.length > 1 ? rName[1] : rName[0];
             ctx.fillStyle = isTargetHover ? "#000" : "#fff";
             ctx.font = `bold ${highlightTargetId === r.nameId ? 12 + (mapZoom - 1) * 2 : 10 + (mapZoom - 1) * 2}px 'Microsoft JhengHei'`;
             ctx.fillText(char, drawX, drawY + (mapZoom > 2 ? 1 : 1));
         } else {
+            // 未發現顯示問號，符合需求「未知=還沒配出來但不等於還沒開放」
             ctx.fillStyle = "#fff"; ctx.font = `${8 + (mapZoom - 1) * 2}px Arial`;
-            ctx.fillText("🔒", drawX, drawY + (mapZoom > 2 ? 1 : 1));
+            ctx.fillText("?", drawX, drawY + (mapZoom > 2 ? 1 : 1));
         }
         if (isHint) { ctx.restore(); }
     });
 
-    // --- 6. 玩家結果連線與 Icon ---
+    // --- 6. 玩家結果連線與 Icon (保持不變) ---
     const resultToShow = isShowingPreviousResult ? previousPlayerResult : lastPlayerResult;
 
     if (resultToShow) {
         const pDrawX = cx + (resultToShow.x * pixelsPerUnit);
         const pDrawY = cy - (resultToShow.y * pixelsPerUnit);
 
-        // 畫實線 (原點 -> 結果)
-        // ★ 如果正在動畫中，線條也畫出來，讓 Icon 沿著線跑，效果比較好
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(pDrawX, pDrawY);
         ctx.strokeStyle = isShowingPreviousResult ? "rgba(50, 50, 50, 0.4)" : "rgba(50, 50, 50, 0.8)";
         ctx.lineWidth = 2; ctx.setLineDash([]); ctx.stroke();
 
-        // 畫虛線 (目標引導)
         if (resultToShow.tx !== null && resultToShow.ty !== null) {
             const tDrawX = cx + (resultToShow.tx * pixelsPerUnit);
             const tDrawY = cy - (resultToShow.ty * pixelsPerUnit);
@@ -1077,20 +1086,15 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
             ctx.lineWidth = 2; ctx.setLineDash([10, 5]); ctx.stroke(); ctx.setLineDash([]);
         }
 
-        // ★★★ 修改：根據動畫狀態決定 Icon 位置 ★★★
         let iconX, iconY;
-
         if (isAnimatingSettlement && settlementAnimPos && !isShowingPreviousResult) {
-            // 動畫模式：Icon 在移動中
             iconX = cx + (settlementAnimPos.x * pixelsPerUnit);
             iconY = cy - (settlementAnimPos.y * pixelsPerUnit);
         } else {
-            // 靜態模式：Icon 在終點
             iconX = pDrawX;
             iconY = pDrawY;
         }
 
-        // 檢查邊界與懸停
         if (iconX >= -50 && iconX <= w + 50 && iconY >= -50 && iconY <= h + 50) {
             if (hoverX === null) {
                 mapHitZones.push({ x: iconX, y: iconY, r: currentIconRadius * 1.5, name: resultToShow.name, tx: resultToShow.x, ty: resultToShow.y });
@@ -1103,34 +1107,22 @@ function drawRecipeMap(hoverX = mapMouseX, hoverY = mapMouseY) {
                     };
                 }
             }
-
-            // 使用共用函式畫 Icon
-            // 舊結果用灰色，新結果(含動畫中)用金色
             const isGold = !isShowingPreviousResult;
             const iconText = isShowingPreviousResult ? "舊" : "丹";
             drawDanIcon(ctx, iconX, iconY, currentIconRadius, iconText, isGold);
         }
     }
 
-    // --- 7. 即時預覽箭頭 (製作過程中) ---
-    // ★★★ 修改：Icon 移到原點，畫出箭頭 ★★★
+    // --- 7. 即時預覽箭頭 (保持不變) ---
     const preview = calculateCurrentPreviewData();
     if (preview) {
         const maxDrawX = cx + (preview.max.x * pixelsPerUnit);
         const maxDrawY = cy - (preview.max.y * pixelsPerUnit);
         const curDrawX = cx + (preview.cur.x * pixelsPerUnit);
         const curDrawY = cy - (preview.cur.y * pixelsPerUnit);
-
-        // 1. 畫虛線箭頭 (最大潛力)
         drawArrow(ctx, cx, cy, maxDrawX, maxDrawY, "rgba(212, 175, 55, 0.6)", true);
-
-        // 2. 畫實線箭頭 (當前有效)
         drawArrow(ctx, cx, cy, curDrawX, curDrawY, "#888", false);
-
-        // 3. 畫 Icon (在原點！)
-        // 樣式改為統一的「丹」字風格
-        drawDanIcon(ctx, cx, cy, currentIconRadius, "丹", true); // 半徑小一點點區分，但風格一致
-        //drawDanIcon(ctx, iconX, iconY, currentIconRadius, iconText, isGold)
+        drawDanIcon(ctx, cx, cy, currentIconRadius, "丹", true); 
     }
 
     // --- 8. Tooltip ---
@@ -1304,7 +1296,9 @@ function getMaterialSVG(key, color) {
     `;
 }
 
-// script.js - 修改 initMaterialGrid (整合 Icon)
+// ==========================================
+// 修改 Function: initMaterialGrid
+// ==========================================
 function initMaterialGrid() {
     const grid = document.getElementById('material-grid');
     if (!grid) return;
@@ -1313,7 +1307,27 @@ function initMaterialGrid() {
     grid.style.display = '';
     grid.className = "panel-view";
 
+    // --- 1. 計算允許顯示的材料 ---
+    const allowedMaterialIds = new Set();
+    
+    if (typeof RecipeDB !== 'undefined') {
+        RecipeDB.forEach(recipe => {
+            // 取得配方需求等級 (若無設定預設為 1)
+            const reqLv = recipe.levelRequired || 1;
+            
+            // ★ 核心邏輯：玩家等級 >= 配方需求等級，該配方的材料才解鎖
+            if (playerLevel >= reqLv) {
+                recipe.targets.forEach(matId => allowedMaterialIds.add(matId));
+            }
+        });
+    }
+
+    // --- 2. 生成按鈕 ---
+    // 遍歷 MaterialDB (它是物件，key 是 ID)
     for (let key in MaterialDB) {
+        // ★ 過濾檢查：如果這個材料不在允許清單內，就跳過
+        if (!allowedMaterialIds.has(key)) continue;
+
         const mat = MaterialDB[key];
         const btn = document.createElement('div');
         btn.className = "mat-btn";
@@ -1321,7 +1335,7 @@ function initMaterialGrid() {
 
         const matName = TextDB[mat.nameId] || key;
         
-        // ★ 呼叫新函式取得 Icon HTML (傳入 key 和 DB 中的顏色)
+        // 生成 Icon
         const iconHtml = getMaterialSVG(key, mat.color);
 
         btn.innerHTML = `
@@ -1335,6 +1349,11 @@ function initMaterialGrid() {
 
         btn.onclick = () => selectMaterial(key);
         grid.appendChild(btn);
+    }
+
+    // 防呆：如果還沒解鎖任何材料
+    if (grid.children.length === 0) {
+        grid.innerHTML = '<p style="color:#888; width:100%; text-align:center; padding-top:20px;">當前等級尚無可用材料</p>';
     }
 }
 
@@ -1760,7 +1779,9 @@ async function runResultSequence() {
     // 6. 最後定格 (確保地圖狀態正確)
     drawRecipeMap();
 }
-// script.js - 修正：確保結算時將 effectId 寫入資料
+// ==========================================
+// 修改 Function: calculateFinalResult
+// ==========================================
 async function calculateFinalResult() {
     console.log("[系統] 執行數值結算...");
 
@@ -1787,16 +1808,27 @@ async function calculateFinalResult() {
 
     let playerRes = calculateCoordinate(dbMat1, pMat1.weight, dbMat2, pMat2.weight, grindCoefficient);
 
-    // --- 2. 配方篩選 ---
+    // --- 2. 配方篩選 (包含等級判定) ---
     let bestRecipe = null;
     let isSlag = false;
     let slagReason = "";
     let errorType = "NONE";
 
-    let primaryCandidates = RecipeDB.filter(r => MaterialDB[r.targets[0]].element === dbMat1.element);
+    // ★ 篩選 1: 五行相符 且 等級達標 ★
+    let primaryCandidates = RecipeDB.filter(r => {
+        // 等級判定
+        const reqLv = r.levelRequired || 1;
+        if (playerLevel < reqLv) return false;
+        
+        // 五行判定
+        return MaterialDB[r.targets[0]].element === dbMat1.element;
+    });
 
     if (primaryCandidates.length === 0) {
-        isSlag = true; slagReason = "主材料五行不符"; errorType = "ELEMENT";
+        // 這裡有可能是因為五行不對，也可能是因為等級不足導致候選清單為空
+        isSlag = true; 
+        slagReason = "五行不符或等級不足"; 
+        errorType = "ELEMENT";
     } else {
         let secondaryMatches = primaryCandidates.filter(r => MaterialDB[r.targets[1]].element === dbMat2.element);
         let targetPool = (secondaryMatches.length > 0) ? secondaryMatches : primaryCandidates;
@@ -1835,49 +1867,69 @@ async function calculateFinalResult() {
         }
     }
 
-    // --- 3. 兜底邏輯 ---
+    // --- 3. 兜底邏輯 (等級不足的配方不參與兜底) ---
     if (!bestRecipe) {
         let minDist = 9999;
         RecipeDB.forEach(r => {
-            let d = Math.sqrt(Math.pow(playerRes.x - r.targetX, 2) + Math.pow(playerRes.y - r.targetY, 2));
-            if (d < minDist) { minDist = d; bestRecipe = r; }
+            const reqLv = r.levelRequired || 1;
+            // 只有已解鎖的配方能被判定
+            if (playerLevel >= reqLv) {
+                let d = Math.sqrt(Math.pow(playerRes.x - r.targetX, 2) + Math.pow(playerRes.y - r.targetY, 2));
+                if (d < minDist) { minDist = d; bestRecipe = r; }
+            }
         });
         isSlag = true;
-        if (!slagReason) slagReason = "未找到合適配方(例外情況)";
+        if (!slagReason) slagReason = "未找到合適配方";
+        
+        // 如果連兜底都找不到 (例如全配方都未解鎖)，那就是真的純廢料
+        if (!bestRecipe) {
+             slagReason = "等級不足，無法辨識";
+        }
     }
 
     // --- 4. 計算評級 ---
-    let bestDist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
-    let pRatio = pMat1.weight / (pMat1.weight + pMat2.weight);
-    let rTotal = bestRecipe.ratio[0] + bestRecipe.ratio[1];
-    let matchRate = 1 - Math.abs(pRatio - (bestRecipe.ratio[0] / rTotal));
-
-    let penalty = 1.0;
+    let matchRatePct = "0.0";
+    let bestDist = 0;
+    
+    // 如果兜底還是沒找到配方 (理論上很少發生)，要防錯
     if (bestRecipe) {
+        bestDist = Math.sqrt(Math.pow(playerRes.x - bestRecipe.targetX, 2) + Math.pow(playerRes.y - bestRecipe.targetY, 2));
+        let pRatio = pMat1.weight / (pMat1.weight + pMat2.weight);
+        let rTotal = bestRecipe.ratio[0] + bestRecipe.ratio[1];
+        let matchRate = 1 - Math.abs(pRatio - (bestRecipe.ratio[0] / rTotal));
+
+        let penalty = 1.0;
         let m1 = (pMat1.id === bestRecipe.targets[0]);
         let m2 = (pMat2.id === bestRecipe.targets[1]);
         if (!m1 && !m2) penalty = 0.64; else if (!m1 || !m2) penalty = 0.8;
+        
+        matchRate *= penalty;
+        matchRatePct = Math.max(0, Math.min(100, matchRate * 100)).toFixed(1);
     }
-    matchRate *= penalty;
-    let matchRatePct = Math.max(0, Math.min(100, matchRate * 100)).toFixed(1);
 
     // --- 5. 品質判定 ---
     let quality = "D";
     let qualityPool = CommentsDB.SLAG;
 
-    if (isSlag) {
-        quality = "D";
+    if (isSlag || !bestRecipe) {
+        quality = "D"; // 炸爐或等級不足強制為 D
+        // 如果是炸爐，也視為一種 SLAG 狀態
+        qualityPool = CommentsDB.SLAG;
     } else {
-        let isPerfect = (matchRate >= 0.99) && (Math.abs(grindCoefficient - bestRecipe.grindTarget) < 0.01) && (bestDist < 0.01);
+        let isPerfect = (matchRatePct >= 99) && (Math.abs(grindCoefficient - bestRecipe.grindTarget) < 0.01) && (bestDist < 0.01);
         if (isPerfect) { quality = "U"; qualityPool = CommentsDB.U; }
-        else if (bestDist <= 0.05 && matchRate >= 0.95) { quality = "S"; qualityPool = CommentsDB.S; }
-        else if (bestDist <= 0.4 && matchRate >= 0.70) { quality = "A"; qualityPool = CommentsDB.A; }
-        else if (bestDist <= 1.0 && matchRate >= 0.50) { quality = "B"; qualityPool = CommentsDB.B; }
+        else if (bestDist <= 0.05 && matchRatePct >= 95) { quality = "S"; qualityPool = CommentsDB.S; }
+        else if (bestDist <= 0.4 && matchRatePct >= 70) { quality = "A"; qualityPool = CommentsDB.A; }
+        else if (bestDist <= 1.0 && matchRatePct >= 50) { quality = "B"; qualityPool = CommentsDB.B; }
         else { quality = "C"; qualityPool = CommentsDB.C; }
     }
 
     let randomComment = qualityPool[Math.floor(Math.random() * qualityPool.length)];
     let finalComment = isSlag ? slagReason + " " + randomComment : randomComment;
+
+    // --- ★★★ 成長系統：給予經驗值 ★★★ ---
+    addPlayerExp(quality);
+    // ------------------------------------
 
     let advice = "";
     if (errorType === "MATERIAL") advice = MasterAdviceDB.WRONG_MATERIAL;
@@ -1912,8 +1964,8 @@ async function calculateFinalResult() {
     let displayToxin = finalToxin.toFixed(2);
 
     // --- 8. 建立資料物件 ---
-    let finalName = isSlag ? "渣滓" : TextDB[bestRecipe.nameId];
-    let finalElement = isSlag ? "無" : bestRecipe.element;
+    let finalName = (isSlag || !bestRecipe) ? "渣滓" : TextDB[bestRecipe.nameId];
+    let finalElement = (isSlag || !bestRecipe) ? "無" : bestRecipe.element;
 
     let finalYinYang = "無";
     if (!isSlag && bestRecipe && typeof bestRecipe.yinYang === "number") {
@@ -1921,14 +1973,14 @@ async function calculateFinalResult() {
         finalYinYang = TextDB[yyIndex] || "未知";
     }
 
-    let finalDesc = isSlag ? "一坨黑乎乎的東西，散發著難以言喻的味道。" : TextDB[bestRecipe.descId];
-    let displayDeviation = isSlag ? "---" : bestDist.toFixed(2);
-    let displayMatch = isSlag ? "---" : matchRatePct;
+    let finalDesc = (isSlag || !bestRecipe) ? "一坨黑乎乎的東西，散發著難以言喻的味道。" : TextDB[bestRecipe.descId];
+    let displayDeviation = (isSlag || !bestRecipe) ? "---" : bestDist.toFixed(2);
+    let displayMatch = (isSlag || !bestRecipe) ? "---" : matchRatePct;
 
     // 更新全域座標
     lastPlayerResult = {
         x: playerRes.x, y: playerRes.y, name: finalName,
-        tx: isSlag ? null : bestRecipe.targetX, ty: isSlag ? null : bestRecipe.targetY
+        tx: (isSlag || !bestRecipe) ? null : bestRecipe.targetX, ty: (isSlag || !bestRecipe) ? null : bestRecipe.targetY
     };
 
     const resultData = {
@@ -1950,7 +2002,6 @@ async function calculateFinalResult() {
         symptoms: symptomText,
         symptomIds: (!isSlag && bestRecipe) ? bestRecipe.symptoms : [],
         
-        // ★★★ 關鍵修正：確實存入 effectId ★★★
         effectId: (!isSlag && bestRecipe) ? bestRecipe.effectId : null,
 
         reaction: reactionText,
@@ -1965,7 +2016,7 @@ async function calculateFinalResult() {
 
     // 存檔
     saveToHistory(resultData);
-    if (!isSlag) {
+    if (!isSlag && bestRecipe) {
         saveToInventory(resultData);
         log(`[背包] 已自動收藏：${finalName}`);
     } else {
@@ -2594,7 +2645,7 @@ window.toggleEffectModal = function () {
         modal.classList.add('hidden');
     }
 };
-// script.js - 修改 renderEffectList (顯示所有症狀分類)
+// script.js - 修改 renderEffectList (增加等級過濾)
 
 function renderEffectList() {
     const container = document.getElementById('effect-list-container');
@@ -2604,67 +2655,57 @@ function renderEffectList() {
     const showAllCheckbox = document.getElementById('show-all-recipes-check');
     const showAll = showAllCheckbox ? showAllCheckbox.checked : false;
 
-    // 2. 遍歷「所有」症狀資料庫 (SymptomsDB)
-    // 這樣可以確保「止痛」等尚未發現配方的分類也能顯示
     Object.keys(SymptomsDB).forEach(key => {
         const symId = parseInt(key);
-
-        // 跳過 ID 0 (無症狀) 或無效資料
         if (symId === 0 || !SymptomsDB[symId]) return;
 
         const symData = SymptomsDB[symId];
-        // 取得症狀名稱 (需確認 TextDB 有對應 ID，若無則顯示 fallback)
         const symptomName = TextDB[symData.descId] || `症狀-${symId}`;
 
         // 3. 在這個症狀下，找出符合條件的配方
-        const matchedRecipes = RecipeDB.filter(r =>
-            r.nameId &&
-            TextDB[r.nameId] !== "渣滓" &&
-            r.symptoms && r.symptoms.includes(symId) && // 配方包含此症狀
-            (showAll || isRecipeDiscovered(r.nameId))   // 過濾：顯示全部 OR 已發現
-        );
+        const matchedRecipes = RecipeDB.filter(r => {
+            // ★★★ 新增：等級嚴格過濾 ★★★
+            const reqLv = r.levelRequired || 1;
+            if (playerLevel < reqLv) return false; // 等級不夠，直接隱藏，連看都不給看
 
-        // 4. 生成 HTML 結構
+            // 原有的過濾邏輯
+            return (
+                r.nameId &&
+                TextDB[r.nameId] !== "渣滓" &&
+                r.symptoms && r.symptoms.includes(symId) &&
+                (showAll || isRecipeDiscovered(r.nameId))
+            );
+        });
+
+        // ... (以下渲染程式碼保持不變) ...
+        
+        // 為了確保你複製完整，這裡提供後半段的簡寫：
         const div = document.createElement('div');
         div.className = 'effect-item';
-
-        // 4-1. 標題列
+        
+        // ... (Header 生成) ...
         const countText = matchedRecipes.length > 0 ? `(${matchedRecipes.length})` : "";
         const headerHtml = `
             <div class="effect-summary" onclick="toggleEffectItem(this)">
-                <div class="effect-title">
-                    🩺 ${symptomName} ${countText}
-                </div>
+                <div class="effect-title">🩺 ${symptomName} ${countText}</div>
                 <span class="arrow">▶</span>
             </div>
         `;
 
-        // 4-2. 內容列
+        // ... (Content 生成) ...
         let rowsHtml = `<div class="effect-details" style="display:none;">`;
-
+        
         if (matchedRecipes.length === 0) {
-            // ★ 如果沒有配方，顯示提示文字
-            rowsHtml += `
-                <div style="padding: 15px; text-align: center; color: #666; font-size: 0.9rem; font-style: italic;">
-                    還未探索到相關配方
-                </div>
-            `;
+            rowsHtml += `<div style="padding: 15px; text-align: center; color: #666; font-size: 0.9rem;">還未探索到相關配方</div>`;
         } else {
-            // 有配方，列出清單
             matchedRecipes.forEach(recipe => {
+                // ... (原本的渲染邏輯) ...
                 const rName = TextDB[recipe.nameId];
                 const rElement = recipe.element;
-
-                const colorMap = {
-                    "金": "#C0C0C0", "木": "#4CAF50", "水": "#2196F3",
-                    "火": "#FF5252", "土": "#FFC107", "全": "#FFFFFF"
-                };
-                const elColor = colorMap[rElement] || "#888";
-
-                // 判斷探索狀態
                 const discovered = isRecipeDiscovered(recipe.nameId);
                 const statusIcon = discovered ? "" : "🔒 ";
                 const textColor = discovered ? "#ccc" : "#777";
+                const elColor = { "金": "#C0C0C0", "木": "#4CAF50", "水": "#2196F3", "火": "#FF5252", "土": "#FFC107", "全": "#FFFFFF" }[rElement] || "#888";
 
                 rowsHtml += `
                     <div class="effect-recipe-row" onclick="highlightRecipeOnMap(${recipe.nameId})" style="color:${textColor}">
@@ -2675,7 +2716,6 @@ function renderEffectList() {
             });
         }
         rowsHtml += `</div>`;
-
         div.innerHTML = headerHtml + rowsHtml;
         container.appendChild(div);
     });
@@ -3683,6 +3723,23 @@ function openClinicWindow() {
     // 'ClinicWindow' 是視窗名稱，再次點擊時會聚焦在同一個視窗，不會一直開新的
     window.open(clinicPath, 'ClinicWindow', windowFeatures);
 }
+// script.js - 修正：切換病歷面板顯示/隱藏
+window.togglePatientPanel = function () {
+    const panel = document.getElementById('patient-info-panel');
+    const btn = document.getElementById('toggle-patient-btn');
+
+    if (panel) {
+        // 切換 hidden class (利用 CSS 的 transform 隱藏)
+        // 你的 CSS 設定 .patient-panel.hidden 是向右滑出
+        if (panel.classList.contains('hidden')) {
+            panel.classList.remove('hidden');
+            if (btn) btn.classList.add('active'); // 按鈕亮燈
+        } else {
+            panel.classList.add('hidden');
+            if (btn) btn.classList.remove('active'); // 按鈕熄燈
+        }
+    }
+};
 // script.js - 新增函式：從歷史紀錄再製丹藥
 
 function regenerateItemFromHistory(index, event) {
@@ -3829,4 +3886,109 @@ function resetGame() {
 
     // 回到流派選擇 (或您原本的邏輯是回到步驟0，這裡假設是回到流派選擇)
     showGameModeSelection();
+}
+
+// ==========================================
+// 新增 Function：成長系統邏輯
+// ==========================================
+// script.js - 修改 updateLevelUI (改成顯示 累積數值 / 目標數值)
+
+function updateLevelUI() {
+    const levelEl = document.getElementById('player-level');
+    const expBar = document.getElementById('exp-bar-fill');
+    const expText = document.getElementById('exp-text');
+
+    // 確保 data.js 的 LevelAttrDB 存在
+    if (typeof LevelAttrDB === 'undefined') return;
+
+    if (levelEl && expBar && expText) {
+        // 1. 顯示等級
+        levelEl.textContent = playerLevel;
+
+        // 2. 取得當前與下一級資料
+        const currentLvlAttr = LevelAttrDB.find(x => x.level === playerLevel);
+        const nextLvlAttr = LevelAttrDB.find(x => x.level === playerLevel + 1);
+
+        if (!nextLvlAttr) {
+            // 滿等狀態
+            expBar.style.width = '100%';
+            expText.textContent = 'MAX LEVEL';
+        } else {
+            // 計算區間 (Bar 條的長度還是要算區間比例，這樣視覺才對)
+            const prevSum = currentLvlAttr ? currentLvlAttr.expSum : 0;
+            const targetSum = nextLvlAttr.expSum;
+            
+            const range = targetSum - prevSum; // 這個等級區間有多少經驗
+            const progress = Math.max(0, currentExp - prevSum); // 在這個區間練了多少
+            
+            // 計算百分比 (給進度條用)
+            const percent = Math.min(100, (progress / range) * 100);
+            expBar.style.width = `${percent}%`;
+
+            // ★★★ 修改：文字顯示改成「當前總經驗 / 升級目標總經驗」 ★★★
+            // 例如：60 / 200 (而不是原本的 10 / 150)
+            expText.textContent = `${Math.floor(currentExp)} / ${targetSum}`;
+        }
+    }
+}
+
+/**
+ * 增加經驗值並存檔
+ */
+function addPlayerExp(grade) {
+    if (typeof ExpGetDB === 'undefined' || typeof LevelAttrDB === 'undefined') return;
+
+    // 1. 查表 (ExpGetDB)
+    let gain = ExpGetDB[grade] || 0;
+    
+    // 特殊處理：如果 Excel 裡沒有定義 'SLAG'，預設給一點點或 0
+    if (grade === 'SLAG' && !ExpGetDB['SLAG']) {
+        gain = 5; 
+    }
+
+    if (gain > 0) {
+        currentExp += gain;
+        // console.log(`[成長] 評價 ${grade} -> 獲得 ${gain} exp`);
+
+        // 2. 檢查升級 (While 迴圈支援一次升多級)
+        let leveledUp = false;
+        while (true) {
+            const nextLvlAttr = LevelAttrDB.find(x => x.level === playerLevel + 1);
+            if (!nextLvlAttr) break; // 已達頂
+
+            if (currentExp >= nextLvlAttr.expSum) {
+                playerLevel++;
+                leveledUp = true;
+            } else {
+                break;
+            }
+        }
+
+        // 3. 存檔 (重要！)
+        localStorage.setItem('alchemy_level_data', JSON.stringify({
+            level: playerLevel,
+            exp: currentExp
+        }));
+
+        // 4. 更新 UI
+        updateLevelUI();
+
+        // 5. 升級觸發
+        if (leveledUp) {
+            if (typeof showToast === 'function') {
+                showToast(`🎉 恭喜升級！等級提升至 Lv.${playerLevel}！`, 4000);
+            } else {
+                alert(`恭喜升級！等級提升至 Lv.${playerLevel}！`);
+            }
+            
+            // 升級後，因為有新配方解鎖，需要刷新材料列表與地圖             
+            drawRecipeMap();
+        }
+        // ★★★ 關鍵修正：只在「材料選擇階段」才刷新列表 ★★★
+            // 如果當前步驟是 0 (選主材) 或 2 (選副材)，才刷新 UI
+            // 避免在 Step 5 (結算) 時因為升級而導致 hidden class 被移除
+            if (currentStep === 0 || currentStep === 2) {
+                initMaterialGrid(); 
+            }
+    }
 }

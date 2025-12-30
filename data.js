@@ -1,6 +1,26 @@
 // data.js - v4.0 (Sarcastic Master Edition)
+// 1. 經驗值獲取表 (參照 ExpGet.sheet)
+const ExpGetDB = {
+    "U": 150,
+    "S": 100,
+    "A": 60,
+    "B": 40,
+    "C": 20,
+    "D": 5,
+    "SLAG": 5 // 假設炸爐(SLAG)給最少經驗，或設為 0
+};
 
-// --- 1. 五行基礎定義 ---
+// 2. 等級屬性表 (參照 LevelAttr.sheet)
+// 注意：陣列索引 1 對應等級 1，索引 0 為佔位符
+const LevelAttrDB = [
+    { level: 0, expRequired: 0, expSum: 0 },         // index 0
+    { level: 1, expRequired: 0, expSum: 0 },         // index 1 (初始等級)
+    { level: 2, expRequired: 50, expSum: 50 },       // index 2
+    { level: 3, expRequired: 150, expSum: 200 },     // index 3
+    { level: 4, expRequired: 250, expSum: 450 },     // index 4
+    { level: 5, expRequired: 400, expSum: 850 },     // index 5
+    { level: 6, expRequired: 700, expSum: 1550 }     // index 6 (MAX)
+];
 const Elements = {
     METAL: "金",
     WOOD: "木",
@@ -241,10 +261,10 @@ const TextDB = {
     125: "視力暫時模糊後產生色彩異常敏銳的錯覺、腹痛絞痛、肌肉麻痺。",
 
     //補白石英、紫石英
-    126:"半透明的灰白色塊狀結晶，斷口呈貝殼狀，質地堅脆。",
-    127:"紫黑色的透光晶體，內部有黑色絮狀物，如深夜的星空。",
-    128:"白石英",
-    129:"紫石英"
+    126: "半透明的灰白色塊狀結晶，斷口呈貝殼狀，質地堅脆。",
+    127: "紫黑色的透光晶體，內部有黑色絮狀物，如深夜的星空。",
+    128: "白石英",
+    129: "紫石英"
 };
 
 // ★★★ 新增：症狀資料庫 (SymptomsDB) ★★★
@@ -395,7 +415,8 @@ const MaterialDB = {
 // (更新依據：配方表_v2.png)
 const RecipeDB = [
     {
-        nameId: 28, // 九轉金丹
+        nameId: 28, // 
+        levelRequired: 1,
         targets: ["DAN_SHA", "SHUI_YIN"],
         ratio: [0.7, 0.4],
         element: Elements.FIRE,
@@ -407,6 +428,7 @@ const RecipeDB = [
     },
     {
         nameId: 29, // 五石散
+        levelRequired: 1,
         targets: ["ZHONG_RU_SHI", "SHI_LIU_HUANG"],
         ratio: [1.1, 0.5],
         element: Elements.METAL,
@@ -418,6 +440,7 @@ const RecipeDB = [
     },
     {
         nameId: 30, // 太一神精丹
+        levelRequired: 1,
         targets: ["DAN_SHA", "ZENG_QING"],
         ratio: [1.5, 1.4],
         element: Elements.FIRE,
@@ -429,6 +452,7 @@ const RecipeDB = [
     },
     {
         nameId: 31, // 小還丹
+        levelRequired: 1,
         targets: ["SHUI_YIN", "SHI_LIU_HUANG"],
         ratio: [1.3, 0.5],
         element: Elements.METAL,
@@ -440,6 +464,7 @@ const RecipeDB = [
     },
     {
         nameId: 32, // 太清金液
+        levelRequired: 1,
         targets: ["SHUI_YIN", "HUANG_JIN"],
         ratio: [20.0, 10.0],
         element: Elements.METAL,
@@ -451,6 +476,7 @@ const RecipeDB = [
     },
     {
         nameId: 33, // 紫雪丹
+        levelRequired: 1,
         targets: ["SHI_GAO", "DAN_SHA"],
         ratio: [10.0, 0.2],
         element: Elements.METAL,
@@ -462,6 +488,7 @@ const RecipeDB = [
     },
     {
         nameId: 34, // 赤雪流珠丹
+        levelRequired: 2,
         targets: ["DAN_SHA", "XIONG_HUANG"],
         ratio: [2.0, 0.6],
         element: Elements.FIRE,
@@ -473,6 +500,7 @@ const RecipeDB = [
     },
     {
         nameId: 35, // 三五神丹
+        levelRequired: 2,
         targets: ["XIONG_HUANG", "DAN_SHA"],
         ratio: [3.2, 1.5],
         element: Elements.EARTH,
@@ -484,6 +512,7 @@ const RecipeDB = [
     },
     {
         nameId: 36, // 琅玕華丹
+        levelRequired: 2,
         targets: ["SHUI_YIN", "TONG"],
         ratio: [50.0, 30.0],
         element: Elements.METAL,
@@ -495,6 +524,7 @@ const RecipeDB = [
     },
     {
         nameId: 37, // 五靈丹
+        levelRequired: 2,
         targets: ["DAN_SHA", "XIONG_HUANG"],
         ratio: [1.3, 0.8],
         element: Elements.ALL,
@@ -509,6 +539,7 @@ const RecipeDB = [
 
     {
         nameId: 84, // 黑鉛丹
+        levelRequired: 3,
         targets: ["HEI_QIAN", "SHUI_YIN"],
         ratio: [3.0, 1.4],
         element: Elements.WATER,
@@ -520,6 +551,7 @@ const RecipeDB = [
     },
     {
         nameId: 85, // 曾青神丹
+        levelRequired: 3,
         targets: ["ZENG_QING", "DAN_SHA"],
         ratio: [1.5, 0.5],
         element: Elements.WOOD,
@@ -531,6 +563,7 @@ const RecipeDB = [
     },
     {
         nameId: 86, // 空青丹
+        levelRequired: 3,
         targets: ["KONG_QING", "DAN_SHA"],
         ratio: [2.0, 0.5],
         element: Elements.WOOD,
@@ -542,6 +575,7 @@ const RecipeDB = [
     },
     {
         nameId: 87, // 硝石丹
+        levelRequired: 3,
         targets: ["XIAO_SHI", "SHUI_YIN"],
         ratio: [2.0, 1.0],
         element: Elements.METAL,
@@ -564,6 +598,7 @@ const RecipeDB = [
     // },
     {
         nameId: 89, // 玉泉丸
+        levelRequired: 4,
         targets: ["BAI_YU", "ZHONG_RU_SHI"],
         ratio: [10.0, 4.0],
         element: Elements.METAL,
@@ -575,6 +610,7 @@ const RecipeDB = [
     },
     {
         nameId: 90, // 雄黃丹
+        levelRequired: 4,
         targets: ["XIONG_HUANG", "SHUI_YIN"],
         ratio: [2.0, 1.0],
         element: Elements.EARTH,
@@ -586,6 +622,7 @@ const RecipeDB = [
     },
     {
         nameId: 91, // 雲母丹
+        levelRequired: 4,
         targets: ["YUN_MU", "BAI_SHI_YING"],
         ratio: [5.5, 2.3],
         element: Elements.METAL,
@@ -597,6 +634,7 @@ const RecipeDB = [
     },
     {
         nameId: 92, // 磁石丹
+        levelRequired: 5,
         targets: ["CI_SHI", "SHUI_YIN"],
         ratio: [4.2, 1.5],
         element: Elements.WATER,
@@ -608,6 +646,7 @@ const RecipeDB = [
     },
     {
         nameId: 93, // 玄鐵丹
+        levelRequired: 5,
         targets: ["XUAN_TIE", "SONG_YAN"],
         ratio: [3.2, 2.0],
         element: Elements.WATER,
@@ -619,6 +658,7 @@ const RecipeDB = [
     },
     {
         nameId: 94, // 紫石英丹
+        levelRequired: 5,
         targets: ["ZI_SHI_YING", "SONG_YAN"],
         ratio: [5.0, 2.5],
         element: Elements.FIRE,
@@ -630,6 +670,7 @@ const RecipeDB = [
     },
     {
         nameId: 95, // 赤石脂丹
+        levelRequired: 6,
         targets: ["CHI_SHI_ZHI", "ZENG_QING"],
         ratio: [8.0, 3.0],
         element: Elements.FIRE,
@@ -641,6 +682,7 @@ const RecipeDB = [
     },
     {
         nameId: 96, // 辟兵丹
+        levelRequired: 6,
         targets: ["DAN_SHA", "XIONG_HUANG"],
         ratio: [3.5, 1.5],
         element: Elements.FIRE,
@@ -652,6 +694,7 @@ const RecipeDB = [
     },
     {
         nameId: 97, // 空青黑鉛丹
+        levelRequired: 6,
         targets: ["KONG_QING", "HEI_QIAN"],
         ratio: [4.0, 2.2],
         element: Elements.WOOD,

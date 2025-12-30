@@ -36,7 +36,7 @@
 
     <div id="app-container">
         <div id="room-id-display" class="room-id-tag">檢查中...</div>
-        <div id="main-frame">            
+        <div id="main-frame">
             <div id="menu-container">
                 <div class="menu-item" onclick="toggleInventoryModal()">
                     <div class="menu-icon">🎒</div>
@@ -56,14 +56,30 @@
 
             <div id="interactive-area">
                 <div id="status-bar">
-                    <div style="flex:1"></div>
-                    <div style="text-align:center">
-                        <h2 id="step-title">準備煉丹</h2>
-                        <p id="instruction-text">請選擇第一種主要材料。</p>
+                    <div class="header-section left">
 
                     </div>
-                    <button id="mode-info-btn" class="mode-info-btn hidden" onclick="showModeInfoModal()">?</button>
-                    <div style="flex:1"></div>
+
+                    <div class="header-section center">
+                        <h2 id="step-title">準備煉丹</h2>
+                        <button id="mode-info-btn" class="mode-info-btn hidden" onclick="showModeInfoModal()">?</button>
+                        <p id="instruction-text">請選擇第一種主要材料。</p>
+                        
+                    </div>
+
+                    <div class="header-section right">
+
+                        <div id="level-container" class="level-container">
+                            <div class="level-badge">
+                                <span class="level-label">煉丹等級</span>
+                                <span id="player-level">1</span>
+                            </div>
+                            <div class="exp-bar-container">
+                                <div id="exp-bar-fill" class="exp-bar-fill" style="width: 0%;"></div>
+                                <span id="exp-text">0 / 50</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="content-panel">
@@ -230,7 +246,7 @@
     <div id="instruction-modal" class="modal hidden">
         <div class="modal-content instruction-content">
             <div class="modal-header">
-                <h2>煉丹須知ver.22.1.12.26</h2>
+                <h2>煉丹須知ver.23.12.30</h2>
                 <span class="close-btn" onclick="closeInstructionModal()">×</span>
             </div>
 
